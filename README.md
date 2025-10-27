@@ -116,3 +116,7 @@ A aplicação frontend será aberta automaticamente em:  \n👉 [http://localhos
 
 
 ## Passos para fazer a alocação
+
+
+## Referências
+https://github.com/GaiaBR-dev/webpas
