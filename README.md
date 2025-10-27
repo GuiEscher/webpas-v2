@@ -113,3 +113,6 @@ yarn start
 A aplicação frontend será aberta automaticamente em:  \n👉 [http://localhost:3000](http://localhost:3000)
 ## ✅ Agora você pode acessar a aplicação e começar a usar o WebPAS!
 ---
+
+
+## Passos para fazer a alocação
