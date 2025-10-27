@@ -1,0 +1,2158 @@
+[
+  {
+    "codigo": "AT01",
+    "salas": [
+      {
+        "Sala": "Sala 02",
+        "Capacidade": 35,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 03",
+        "Capacidade": 40,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 04",
+        "Capacidade": 40,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 05",
+        "Capacidade": 40,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 06",
+        "Capacidade": 40,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 07",
+        "Capacidade": 160,
+        "disponibilidade": {
+          "M": 0,
+          "T": 0,
+          "N": 0
+        }
+      },
+      {
+        "Sala": "Sala 08",
+        "Capacidade": 40,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 12",
+        "Capacidade": 20,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 13",
+        "Capacidade": 20,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 14",
+        "Capacidade": 20,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 16",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 17",
+        "Capacidade": 160,
+        "disponibilidade": {
+          "M": 0,
+          "T": 0,
+          "N": 0
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 3000,
+      "DC": 3000,
+      "DEMa": 3000,
+      "DQ": 3000,
+      "DM": 3000,
+      "DF": 3000,
+      "DEQ": 3000,
+      "DEP": 3000,
+      "Prancheta": 3000,
+      "Esp-Sul": 1,
+      "Esp-Norte": 3000,
+      "Denf": 3000,
+      "Dfisio": 3000,
+      "DES": 3000,
+      "DCSo": 351,
+      "DED": 228,
+      "DPSI": 109,
+      "DB": 3000,
+      "DGE": 3000,
+      "DMED": 3000,
+      "DMP": 3000,
+      "DTO": 3000,
+      "DS": 358,
+      "DCCBS": 411,
+      "DCCET": 930,
+      "DTPP": 155,
+      "DCAM": 3000,
+      "DCF": 3000,
+      "DAC": 1000,
+      "DEFMH": 200,
+      "DL": 170,
+      "DME": 200,
+      "DFIL": 160,
+      "DEBE": 3000,
+      "Dgero": 3000,
+      "DEE": 3000,
+      "DEMEC": 3000,
+      "DCI": 351,
+      "DECIV": 3000,
+      "DTAiSER": 160,
+      "DBIO": 235,
+      "DGTH": 235,
+      "DDR": 235
+    }
+  },
+  {
+    "codigo": "AT02",
+    "salas": [
+      {
+        "Sala": "Sala 37",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 41",
+        "Capacidade": 40,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 42",
+        "Capacidade": 40,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 43",
+        "Capacidade": 40,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 44",
+        "Capacidade": 40,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 3000,
+      "DC": 3000,
+      "DEMa": 3000,
+      "DQ": 3000,
+      "DM": 3000,
+      "DF": 3000,
+      "DEQ": 3000,
+      "DEP": 3000,
+      "Prancheta": 3000,
+      "Esp-Sul": 3000,
+      "Esp-Norte": 3000,
+      "Denf": 3000,
+      "Dfisio": 3000,
+      "DES": 3000,
+      "DCSo": 367,
+      "DED": 257,
+      "DPSI": 138,
+      "DB": 3000,
+      "DGE": 3000,
+      "DMED": 3000,
+      "DMP": 3000,
+      "DTO": 3000,
+      "DS": 372,
+      "DCCBS": 440,
+      "DCCET": 893,
+      "DTPP": 180,
+      "DCAM": 3000,
+      "DCF": 3000,
+      "DAC": 1000,
+      "DEFMH": 250,
+      "DL": 200,
+      "DME": 238,
+      "DFIL": 190,
+      "DEBE": 3000,
+      "Dgero": 3000,
+      "DEE": 3000,
+      "DEMEC": 3000,
+      "DCI": 367,
+      "DECIV": 3000,
+      "DTAiSER": 190,
+      "DBIO": 245,
+      "DGTH": 245,
+      "DDR": 245
+    }
+  },
+  {
+    "codigo": "AT02 (T)",
+    "salas": [
+      {
+        "Sala": "Sala 26",
+        "Capacidade": 40,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 28",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 30",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 31",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 32",
+        "Capacidade": 20,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 3000,
+      "DC": 3000,
+      "DEMa": 3000,
+      "DQ": 3000,
+      "DM": 3000,
+      "DF": 3000,
+      "DEQ": 3000,
+      "DEP": 3000,
+      "Prancheta": 3000,
+      "Esp-Sul": 50,
+      "Esp-Norte": 3000,
+      "Denf": 3000,
+      "Dfisio": 3000,
+      "DES": 3000,
+      "DCSo": 367,
+      "DED": 257,
+      "DPSI": 138,
+      "DB": 3000,
+      "DGE": 3000,
+      "DMED": 3000,
+      "DMP": 3000,
+      "DTO": 3000,
+      "DS": 372,
+      "DCCBS": 440,
+      "DCCET": 893,
+      "DTPP": 180,
+      "DCAM": 3000,
+      "DCF": 3000,
+      "DAC": 1000,
+      "DEFMH": 250,
+      "DL": 200,
+      "DME": 238,
+      "DFIL": 190,
+      "DEBE": 3000,
+      "Dgero": 3000,
+      "DEE": 3000,
+      "DEMEC": 3000,
+      "DCI": 367,
+      "DECIV": 3000,
+      "DTAiSER": 190,
+      "DBIO": 245,
+      "DGTH": 245,
+      "DDR": 245
+    }
+  },
+  {
+    "codigo": "AT02.Dac",
+    "salas": [
+      {
+        "Sala": "Sala 38",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 0,
+          "N": 0
+        }
+      },
+      {
+        "Sala": "Sala 39",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 0
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 3000,
+      "DC": 3000,
+      "DEMa": 3000,
+      "DQ": 3000,
+      "DM": 3000,
+      "DF": 3000,
+      "DEQ": 3000,
+      "DEP": 3000,
+      "Prancheta": 3000,
+      "Esp-Sul": 3000,
+      "Esp-Norte": 3000,
+      "Denf": 3000,
+      "Dfisio": 3000,
+      "DES": 3000,
+      "DCSo": 367,
+      "DED": 300,
+      "DPSI": 300,
+      "DB": 3000,
+      "DGE": 3000,
+      "DMED": 3000,
+      "DMP": 3000,
+      "DTO": 3000,
+      "DS": 372,
+      "DCCBS": 440,
+      "DCCET": 893,
+      "DTPP": 180,
+      "DCAM": 3000,
+      "DCF": 3000,
+      "DAC": 1,
+      "DEFMH": 320,
+      "DL": 300,
+      "DME": 300,
+      "DFIL": 300,
+      "DEBE": 3000,
+      "Dgero": 3000,
+      "DEE": 3000,
+      "DEMEC": 3000,
+      "DCI": 367,
+      "DECIV": 3000,
+      "DTAiSER": 300,
+      "DBIO": 300,
+      "DGTH": 300,
+      "DDR": 300
+    }
+  },
+  {
+    "codigo": "AT02.Dac (T)",
+    "salas": [
+      {
+        "Sala": "Sala 27",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 29",
+        "Capacidade": 40,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 0
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 3000,
+      "DC": 3000,
+      "DEMa": 3000,
+      "DQ": 3000,
+      "DM": 3000,
+      "DF": 3000,
+      "DEQ": 3000,
+      "DEP": 3000,
+      "Prancheta": 3000,
+      "Esp-Sul": 200,
+      "Esp-Norte": 3000,
+      "Denf": 3000,
+      "Dfisio": 3000,
+      "DES": 3000,
+      "DCSo": 367,
+      "DED": 300,
+      "DPSI": 300,
+      "DB": 3000,
+      "DGE": 3000,
+      "DMED": 3000,
+      "DMP": 3000,
+      "DTO": 3000,
+      "DS": 372,
+      "DCCBS": 440,
+      "DCCET": 893,
+      "DTPP": 180,
+      "DCAM": 3000,
+      "DCF": 3000,
+      "DAC": 1,
+      "DEFMH": 320,
+      "DL": 300,
+      "DME": 300,
+      "DFIL": 300,
+      "DEBE": 3000,
+      "Dgero": 3000,
+      "DEE": 3000,
+      "DEMEC": 3000,
+      "DCI": 367,
+      "DECIV": 3000,
+      "DTAiSER": 300,
+      "DBIO": 300,
+      "DGTH": 300,
+      "DDR": 300
+    }
+  },
+  {
+    "codigo": "AT04",
+    "salas": [
+      {
+        "Sala": "Sala 81",
+        "Capacidade": 20,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 82",
+        "Capacidade": 20,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 83",
+        "Capacidade": 20,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 84",
+        "Capacidade": 20,
+        "disponibilidade": {
+          "M": 0,
+          "T": 0,
+          "N": 0
+        }
+      },
+      {
+        "Sala": "Sala 85",
+        "Capacidade": 30,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 86",
+        "Capacidade": 30,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 87",
+        "Capacidade": 30,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 88",
+        "Capacidade": 30,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 89",
+        "Capacidade": 30,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 90",
+        "Capacidade": 40,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 91",
+        "Capacidade": 80,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 586,
+      "DC": 600,
+      "DEMa": 308,
+      "DQ": 310,
+      "DM": 500,
+      "DF": 100,
+      "DEQ": 110,
+      "DEP": 77,
+      "Prancheta": 3000,
+      "Esp-Sul": 3000,
+      "Esp-Norte": 3000,
+      "Denf": 556,
+      "Dfisio": 593,
+      "DES": 20,
+      "DCSo": 900,
+      "DED": 864,
+      "DPSI": 800,
+      "DB": 524,
+      "DGE": 524,
+      "DMED": 593,
+      "DMP": 524,
+      "DTO": 593,
+      "DS": 662,
+      "DCCBS": 781,
+      "DCCET": 463,
+      "DTPP": 875,
+      "DCAM": 524,
+      "DCF": 524,
+      "DAC": 3000,
+      "DEFMH": 1000,
+      "DL": 3000,
+      "DME": 3000,
+      "DFIL": 3000,
+      "DEBE": 524,
+      "Dgero": 593,
+      "DEE": 463,
+      "DEMEC": 463,
+      "DCI": 716,
+      "DECIV": 308,
+      "DTAiSER": 766,
+      "DBIO": 684,
+      "DGTH": 684,
+      "DDR": 684
+    }
+  },
+  {
+    "codigo": "AT04 (T)",
+    "salas": [
+      {
+        "Sala": "Sala 66",
+        "Capacidade": 20,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 67",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 68",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 69",
+        "Capacidade": 20,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 70",
+        "Capacidade": 20,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 71",
+        "Capacidade": 20,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 72",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 73",
+        "Capacidade": 80,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 74",
+        "Capacidade": 40,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 75",
+        "Capacidade": 40,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 586,
+      "DC": 600,
+      "DEMa": 308,
+      "DQ": 310,
+      "DM": 500,
+      "DF": 100,
+      "DEQ": 110,
+      "DEP": 77,
+      "Prancheta": 3000,
+      "Esp-Sul": 3000,
+      "Esp-Norte": 1,
+      "Denf": 556,
+      "Dfisio": 593,
+      "DES": 20,
+      "DCSo": 900,
+      "DED": 864,
+      "DPSI": 800,
+      "DB": 524,
+      "DGE": 524,
+      "DMED": 593,
+      "DMP": 524,
+      "DTO": 593,
+      "DS": 662,
+      "DCCBS": 781,
+      "DCCET": 463,
+      "DTPP": 875,
+      "DCAM": 524,
+      "DCF": 524,
+      "DAC": 3000,
+      "DEFMH": 1000,
+      "DL": 3000,
+      "DME": 3000,
+      "DFIL": 3000,
+      "DEBE": 524,
+      "Dgero": 593,
+      "DEE": 463,
+      "DEMEC": 463,
+      "DCI": 716,
+      "DECIV": 308,
+      "DTAiSER": 766,
+      "DBIO": 684,
+      "DGTH": 684,
+      "DDR": 684
+    }
+  },
+  {
+    "codigo": "AT05",
+    "salas": [
+      {
+        "Sala": "Sala 109",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 110",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 111",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 112",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 113",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 114",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 115",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 116",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 172,
+      "DC": 300,
+      "DEMa": 202,
+      "DQ": 176,
+      "DM": 300,
+      "DF": 476,
+      "DEQ": 330,
+      "DEP": 413,
+      "Prancheta": 3000,
+      "Esp-Sul": 3000,
+      "Esp-Norte": 3000,
+      "Denf": 479,
+      "Dfisio": 447,
+      "DES": 474,
+      "DCSo": 1000,
+      "DED": 812,
+      "DPSI": 717,
+      "DB": 113,
+      "DGE": 113,
+      "DMED": 447,
+      "DMP": 113,
+      "DTO": 447,
+      "DS": 741,
+      "DCCBS": 874,
+      "DCCET": 300,
+      "DTPP": 814,
+      "DCAM": 113,
+      "DCF": 113,
+      "DAC": 3000,
+      "DEFMH": 1000,
+      "DL": 3000,
+      "DME": 3000,
+      "DFIL": 3000,
+      "DEBE": 113,
+      "Dgero": 447,
+      "DEE": 300,
+      "DEMEC": 300,
+      "DCI": 786,
+      "DECIV": 202,
+      "DTAiSER": 711,
+      "DBIO": 681,
+      "DGTH": 681,
+      "DDR": 681
+    }
+  },
+  {
+    "codigo": "AT05 (T)",
+    "salas": [
+      {
+        "Sala": "Sala 96",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 0
+        }
+      },
+      {
+        "Sala": "Sala 97",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 0
+        }
+      },
+      {
+        "Sala": "Sala 98",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 0
+        }
+      },
+      {
+        "Sala": "Sala 99",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 0
+        }
+      },
+      {
+        "Sala": "Sala 100",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 101",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 0
+        }
+      },
+      {
+        "Sala": "Sala 102",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 0
+        }
+      },
+      {
+        "Sala": "Sala 103",
+        "Capacidade": 60,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 0
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 172,
+      "DC": 300,
+      "DEMa": 202,
+      "DQ": 176,
+      "DM": 300,
+      "DF": 476,
+      "DEQ": 330,
+      "DEP": 413,
+      "Prancheta": 3000,
+      "Esp-Sul": 3000,
+      "Esp-Norte": 100,
+      "Denf": 479,
+      "Dfisio": 447,
+      "DES": 474,
+      "DCSo": 1000,
+      "DED": 812,
+      "DPSI": 717,
+      "DB": 113,
+      "DGE": 113,
+      "DMED": 447,
+      "DMP": 113,
+      "DTO": 447,
+      "DS": 741,
+      "DCCBS": 874,
+      "DCCET": 300,
+      "DTPP": 814,
+      "DCAM": 113,
+      "DCF": 113,
+      "DAC": 3000,
+      "DEFMH": 1000,
+      "DL": 3000,
+      "DME": 3000,
+      "DFIL": 3000,
+      "DEBE": 113,
+      "Dgero": 447,
+      "DEE": 300,
+      "DEMEC": 300,
+      "DCI": 786,
+      "DECIV": 202,
+      "DTAiSER": 711,
+      "DBIO": 681,
+      "DGTH": 681,
+      "DDR": 681
+    }
+  },
+  {
+    "codigo": "AT05.Pr",
+    "salas": [
+      {
+        "Sala": "Sala 108",
+        "Capacidade": 30,
+        "disponibilidade": {
+          "M": 0,
+          "T": 0,
+          "N": 0
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 272,
+      "DC": 400,
+      "DEMa": 302,
+      "DQ": 276,
+      "DM": 400,
+      "DF": 576,
+      "DEQ": 430,
+      "DEP": 513,
+      "Prancheta": 1,
+      "Esp-Sul": 3100,
+      "Esp-Norte": 3000,
+      "Denf": 579,
+      "Dfisio": 547,
+      "DES": 574,
+      "DCSo": 1100,
+      "DED": 912,
+      "DPSI": 817,
+      "DB": 213,
+      "DGE": 213,
+      "DMED": 547,
+      "DMP": 213,
+      "DTO": 547,
+      "DS": 841,
+      "DCCBS": 974,
+      "DCCET": 400,
+      "DTPP": 914,
+      "DCAM": 213,
+      "DCF": 213,
+      "DAC": 3000,
+      "DEFMH": 1100,
+      "DL": 3000,
+      "DME": 3000,
+      "DFIL": 3000,
+      "DEBE": 213,
+      "Dgero": 547,
+      "DEE": 400,
+      "DEMEC": 400,
+      "DCI": 886,
+      "DECIV": 302,
+      "DTAiSER": 811,
+      "DBIO": 781,
+      "DGTH": 781,
+      "DDR": 781
+    }
+  },
+  {
+    "codigo": "AT07",
+    "salas": [
+      {
+        "Sala": "Sala 164",
+        "Capacidade": 63,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 165",
+        "Capacidade": 63,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 166",
+        "Capacidade": 63,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 170",
+        "Capacidade": 45,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 171",
+        "Capacidade": 63,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 172",
+        "Capacidade": 81,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 173",
+        "Capacidade": 45,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 174",
+        "Capacidade": 45,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 175",
+        "Capacidade": 45,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 176",
+        "Capacidade": 45,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 167,
+      "DC": 343,
+      "DEMa": 292,
+      "DQ": 269,
+      "DM": 200,
+      "DF": 569,
+      "DEQ": 431,
+      "DEP": 518,
+      "Prancheta": 3000,
+      "Esp-Sul": 3000,
+      "Esp-Norte": 3000,
+      "Denf": 300,
+      "Dfisio": 300,
+      "DES": 578,
+      "DCSo": 1000,
+      "DED": 854,
+      "DPSI": 742,
+      "DB": 1,
+      "DGE": 1,
+      "DMED": 466,
+      "DMP": 1,
+      "DTO": 300,
+      "DS": 811,
+      "DCCBS": 937,
+      "DCCET": 343,
+      "DTPP": 851,
+      "DCAM": 1,
+      "DCF": 1,
+      "DAC": 3000,
+      "DEFMH": 1000,
+      "DL": 3000,
+      "DME": 3000,
+      "DFIL": 3000,
+      "DEBE": 1,
+      "Dgero": 300,
+      "DEE": 200,
+      "DEMEC": 200,
+      "DCI": 851,
+      "DECIV": 292,
+      "DTAiSER": 756,
+      "DBIO": 736,
+      "DGTH": 736,
+      "DDR": 736
+    }
+  },
+  {
+    "codigo": "AT07 (T)",
+    "salas": [
+      {
+        "Sala": "Sala 162",
+        "Capacidade": 97,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 163",
+        "Capacidade": 97,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 167,
+      "DC": 343,
+      "DEMa": 292,
+      "DQ": 269,
+      "DM": 200,
+      "DF": 569,
+      "DEQ": 431,
+      "DEP": 518,
+      "Prancheta": 3000,
+      "Esp-Sul": 3000,
+      "Esp-Norte": 150,
+      "Denf": 300,
+      "Dfisio": 300,
+      "DES": 578,
+      "DCSo": 1000,
+      "DED": 854,
+      "DPSI": 742,
+      "DB": 1,
+      "DGE": 1,
+      "DMED": 466,
+      "DMP": 1,
+      "DTO": 300,
+      "DS": 811,
+      "DCCBS": 937,
+      "DCCET": 343,
+      "DTPP": 851,
+      "DCAM": 1,
+      "DCF": 1,
+      "DAC": 3000,
+      "DEFMH": 1000,
+      "DL": 3000,
+      "DME": 3000,
+      "DFIL": 3000,
+      "DEBE": 1,
+      "Dgero": 300,
+      "DEE": 200,
+      "DEMEC": 200,
+      "DCI": 851,
+      "DECIV": 292,
+      "DTAiSER": 756,
+      "DBIO": 736,
+      "DGTH": 736,
+      "DDR": 736
+    }
+  },
+  {
+    "codigo": "AT07.Pr",
+    "salas": [
+      {
+        "Sala": "Sala 160",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 0,
+          "T": 0,
+          "N": 0
+        }
+      },
+      {
+        "Sala": "Sala 161",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 0,
+          "T": 0,
+          "N": 0
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 267,
+      "DC": 443,
+      "DEMa": 392,
+      "DQ": 369,
+      "DM": 300,
+      "DF": 669,
+      "DEQ": 531,
+      "DEP": 618,
+      "Prancheta": 1,
+      "Esp-Sul": 3100,
+      "Esp-Norte": 3000,
+      "Denf": 400,
+      "Dfisio": 400,
+      "DES": 678,
+      "DCSo": 1100,
+      "DED": 954,
+      "DPSI": 842,
+      "DB": 101,
+      "DGE": 101,
+      "DMED": 566,
+      "DMP": 101,
+      "DTO": 400,
+      "DS": 911,
+      "DCCBS": 1037,
+      "DCCET": 443,
+      "DTPP": 951,
+      "DCAM": 101,
+      "DCF": 101,
+      "DAC": 3000,
+      "DEFMH": 1100,
+      "DL": 3000,
+      "DME": 3000,
+      "DFIL": 3000,
+      "DEBE": 101,
+      "Dgero": 400,
+      "DEE": 300,
+      "DEMEC": 300,
+      "DCI": 951,
+      "DECIV": 392,
+      "DTAiSER": 856,
+      "DBIO": 836,
+      "DGTH": 836,
+      "DDR": 836
+    }
+  },
+  {
+    "codigo": "AT08",
+    "salas": [
+      {
+        "Sala": "Sala 183",
+        "Capacidade": 45,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 184",
+        "Capacidade": 45,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 185",
+        "Capacidade": 45,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 186",
+        "Capacidade": 45,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 187",
+        "Capacidade": 45,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 188",
+        "Capacidade": 45,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 3000,
+      "DC": 3000,
+      "DEMa": 3000,
+      "DQ": 3000,
+      "DM": 3000,
+      "DF": 3000,
+      "DEQ": 3000,
+      "DEP": 3000,
+      "Prancheta": 3000,
+      "Esp-Sul": 3000,
+      "Esp-Norte": 3000,
+      "Denf": 3000,
+      "Dfisio": 3000,
+      "DES": 3000,
+      "DCSo": 150,
+      "DED": 178,
+      "DPSI": 80,
+      "DB": 3000,
+      "DGE": 3000,
+      "DMED": 3000,
+      "DMP": 3000,
+      "DTO": 3000,
+      "DS": 344,
+      "DCCBS": 384,
+      "DCCET": 991,
+      "DTPP": 149,
+      "DCAM": 3000,
+      "DCF": 3000,
+      "DAC": 1000,
+      "DEFMH": 290,
+      "DL": 126,
+      "DME": 126,
+      "DFIL": 126,
+      "DEBE": 3000,
+      "Dgero": 3000,
+      "DEE": 3000,
+      "DEMEC": 3000,
+      "DCI": 328,
+      "DECIV": 3000,
+      "DTAiSER": 138,
+      "DBIO": 225,
+      "DGTH": 225,
+      "DDR": 225
+    }
+  },
+  {
+    "codigo": "AT08 (T)",
+    "salas": [
+      {
+        "Sala": "Sala 180",
+        "Capacidade": 92,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 181",
+        "Capacidade": 92,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 182",
+        "Capacidade": 92,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 3000,
+      "DC": 3000,
+      "DEMa": 3000,
+      "DQ": 3000,
+      "DM": 3000,
+      "DF": 3000,
+      "DEQ": 3000,
+      "DEP": 3000,
+      "Prancheta": 3000,
+      "Esp-Sul": 100,
+      "Esp-Norte": 3000,
+      "Denf": 3000,
+      "Dfisio": 3000,
+      "DES": 3000,
+      "DCSo": 150,
+      "DED": 178,
+      "DPSI": 80,
+      "DB": 3000,
+      "DGE": 3000,
+      "DMED": 3000,
+      "DMP": 3000,
+      "DTO": 3000,
+      "DS": 344,
+      "DCCBS": 384,
+      "DCCET": 991,
+      "DTPP": 149,
+      "DCAM": 3000,
+      "DCF": 3000,
+      "DAC": 1000,
+      "DEFMH": 290,
+      "DL": 126,
+      "DME": 126,
+      "DFIL": 126,
+      "DEBE": 3000,
+      "Dgero": 3000,
+      "DEE": 3000,
+      "DEMEC": 3000,
+      "DCI": 328,
+      "DECIV": 3000,
+      "DTAiSER": 138,
+      "DBIO": 225,
+      "DGTH": 225,
+      "DDR": 225
+    }
+  },
+  {
+    "codigo": "AT09",
+    "salas": [
+      {
+        "Sala": "Sala 198",
+        "Capacidade": 21,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 199",
+        "Capacidade": 45,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 212",
+        "Capacidade": 45,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 213",
+        "Capacidade": 45,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 214",
+        "Capacidade": 45,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 215",
+        "Capacidade": 45,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 216",
+        "Capacidade": 45,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 217",
+        "Capacidade": 63,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 218",
+        "Capacidade": 63,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 219",
+        "Capacidade": 63,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 700,
+      "DC": 80,
+      "DEMa": 350,
+      "DQ": 511,
+      "DM": 80,
+      "DF": 511,
+      "DEQ": 650,
+      "DEP": 750,
+      "Prancheta": 3000,
+      "Esp-Sul": 3000,
+      "Esp-Norte": 3000,
+      "Denf": 100,
+      "Dfisio": 50,
+      "DES": 700,
+      "DCSo": 1300,
+      "DED": 1150,
+      "DPSI": 1060,
+      "DB": 700,
+      "DGE": 700,
+      "DMED": 127,
+      "DMP": 700,
+      "DTO": 127,
+      "DS": 1020,
+      "DCCBS": 1160,
+      "DCCET": 80,
+      "DTPP": 1160,
+      "DCAM": 700,
+      "DCF": 700,
+      "DAC": 3000,
+      "DEFMH": 1000,
+      "DL": 3000,
+      "DME": 3000,
+      "DFIL": 3000,
+      "DEBE": 700,
+      "Dgero": 127,
+      "DEE": 500,
+      "DEMEC": 500,
+      "DCI": 1070,
+      "DECIV": 500,
+      "DTAiSER": 1050,
+      "DBIO": 1000,
+      "DGTH": 1000,
+      "DDR": 1000
+    }
+  },
+  {
+    "codigo": "AT09 (T)",
+    "salas": [
+      {
+        "Sala": "Sala 190",
+        "Capacidade": 54,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 191",
+        "Capacidade": 21,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 192",
+        "Capacidade": 21,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 193",
+        "Capacidade": 21,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 194",
+        "Capacidade": 21,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 195",
+        "Capacidade": 30,
+        "disponibilidade": {
+          "M": 1,
+          "T": 0,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 196",
+        "Capacidade": 21,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 700,
+      "DC": 80,
+      "DEMa": 350,
+      "DQ": 511,
+      "DM": 80,
+      "DF": 511,
+      "DEQ": 650,
+      "DEP": 750,
+      "Prancheta": 3000,
+      "Esp-Sul": 3000,
+      "Esp-Norte": 300,
+      "Denf": 100,
+      "Dfisio": 50,
+      "DES": 700,
+      "DCSo": 1300,
+      "DED": 1150,
+      "DPSI": 1060,
+      "DB": 700,
+      "DGE": 700,
+      "DMED": 127,
+      "DMP": 700,
+      "DTO": 127,
+      "DS": 1020,
+      "DCCBS": 1160,
+      "DCCET": 80,
+      "DTPP": 1160,
+      "DCAM": 700,
+      "DCF": 700,
+      "DAC": 3000,
+      "DEFMH": 1000,
+      "DL": 3000,
+      "DME": 3000,
+      "DFIL": 3000,
+      "DEBE": 700,
+      "Dgero": 127,
+      "DEE": 500,
+      "DEMEC": 500,
+      "DCI": 1070,
+      "DECIV": 500,
+      "DTAiSER": 1050,
+      "DBIO": 1000,
+      "DGTH": 1000,
+      "DDR": 1000
+    }
+  },
+  {
+    "codigo": "AT10",
+    "salas": [
+      {
+        "Sala": "Sala 225",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 0,
+          "T": 0,
+          "N": 0
+        }
+      },
+      {
+        "Sala": "Sala 231",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 0,
+          "T": 0,
+          "N": 0
+        }
+      },
+      {
+        "Sala": "Sala 232",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 233",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 234",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 235",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 236",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 237",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 238",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala 239",
+        "Capacidade": 50,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 652,
+      "DC": 800,
+      "DEMa": 384,
+      "DQ": 400,
+      "DM": 600,
+      "DF": 200,
+      "DEQ": 180,
+      "DEP": 100,
+      "Prancheta": 3000,
+      "Esp-Sul": 3000,
+      "Esp-Norte": 3000,
+      "Denf": 800,
+      "Dfisio": 800,
+      "DES": 100,
+      "DCSo": 1000,
+      "DED": 855,
+      "DPSI": 820,
+      "DB": 586,
+      "DGE": 586,
+      "DMED": 800,
+      "DMP": 586,
+      "DTO": 800,
+      "DS": 654,
+      "DCCBS": 761,
+      "DCCET": 523,
+      "DTPP": 880,
+      "DCAM": 586,
+      "DCF": 586,
+      "DAC": 3000,
+      "DEFMH": 1000,
+      "DL": 3000,
+      "DME": 3000,
+      "DFIL": 3000,
+      "DEBE": 586,
+      "Dgero": 800,
+      "DEE": 800,
+      "DEMEC": 800,
+      "DCI": 703,
+      "DECIV": 384,
+      "DTAiSER": 775,
+      "DBIO": 682,
+      "DGTH": 682,
+      "DDR": 682
+    }
+  },
+  {
+    "codigo": "ATX",
+    "salas": [
+      {
+        "Sala": "Sala X01",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X02",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X03",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X04",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X05",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X06",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X07",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X08",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X09",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X10",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X11",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X12",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X13",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X14",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X15",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X16",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X17",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X18",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X19",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      },
+      {
+        "Sala": "Sala X20",
+        "Capacidade": 200,
+        "disponibilidade": {
+          "M": 1,
+          "T": 1,
+          "N": 1
+        }
+      }
+    ],
+    "distancias_departamentos": {
+      "DHb": 30000,
+      "DC": 30000,
+      "DEMa": 30000,
+      "DQ": 30000,
+      "DM": 30000,
+      "DF": 30000,
+      "DEQ": 30000,
+      "DEP": 30000,
+      "Prancheta": 30000,
+      "Esp-Sul": 30000,
+      "Esp-Norte": 30000,
+      "Denf": 30000,
+      "Dfisio": 30000,
+      "DES": 30000,
+      "DCSo": 30000,
+      "DED": 30000,
+      "DPSI": 30000,
+      "DB": 30000,
+      "DGE": 30000,
+      "DMED": 30000,
+      "DMP": 30000,
+      "DTO": 30000,
+      "DS": 30000,
+      "DCCBS": 30000,
+      "DCCET": 30000,
+      "DTPP": 30000,
+      "DCAM": 30000,
+      "DCF": 30000,
+      "DAC": 30000,
+      "DEFMH": 30000,
+      "DL": 30000,
+      "DME": 30000,
+      "DFIL": 30000,
+      "DEBE": 30000,
+      "Dgero": 30000,
+      "DEE": 30000,
+      "DEMEC": 30000,
+      "DCI": 30000,
+      "DECIV": 30000,
+      "DTAiSER": 30000,
+      "DBIO": 30000,
+      "DGTH": 30000,
+      "DDR": 30000
+    }
+  }
+]
