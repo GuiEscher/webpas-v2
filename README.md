@@ -111,7 +111,8 @@ npm start
 # ou
 yarn start
 ```
-A aplicação frontend será aberta automaticamente em:  \n👉 [http://localhost:3000](http://localhost:3000)
+A aplicação frontend será aberta automaticamente em:  
+👉 [http://localhost:3000](http://localhost:3000)
 ## ✅ Agora você pode acessar a aplicação e começar a usar o WebPAS!
 ---
 
