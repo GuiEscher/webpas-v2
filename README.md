@@ -36,7 +36,8 @@ Antes de começar, certifique-se de ter instalado:
 ### 1️⃣ Clonar o Repositório
 
 ```bash
-git clone <https://github.com/GuiEscher/webpas-v2.git> cd <nome-da-pasta-do-projeto>
+git clone <https://github.com/GuiEscher/webpas-v2.git>
+cd <nome-da-pasta-do-projeto>
 ```
 
 ### 2️⃣ Configurar o MongoDB Atlas
