@@ -1,9 +1,10 @@
 import React, {Component, useState, useEffect} from "react";
 import PageHeader from "../../re-usable/page-header.component";
 import DateRangeIcon from '@mui/icons-material/DateRange';
-import {Grid,Toolbar,Button, TextField, Paper, Box, TableContainer, ToggleButtonGroup, ToggleButton} from "@mui/material";
+import {Grid,Toolbar,Button, TextField, Paper, Box, TableContainer, ToggleButtonGroup, ToggleButton, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle} from "@mui/material";
 import Select from "../../forms/select.component";
 import CachedTwoToneIcon from '@mui/icons-material/CachedTwoTone';
+import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import InputAdornment from '@mui/material/InputAdornment';
 import HelpIcon from '@mui/icons-material/Help';
@@ -20,7 +21,6 @@ import Popover from '@mui/material/Popover';
 import AgendaCampos from "./agenda-campos.component";
 import TrocaSalaForm from "../../forms/trocaSalaForm.component";
 import ExportarResultadoForm from "../../forms/exportarResultadoForm.component";
-import {Dialog, DialogContent} from "@mui/material";
 import ResultadosDataService from '../../../services/resultados';
 
 const inputCss = {
@@ -89,6 +89,7 @@ const Agenda = props =>{
     const [horario,setHorario] = useState(0);
     const [openTrocaSalaForm,setOpenTrocaSalaForm] = useState(false);
     const [openExportarForm,setOpenExportarForm] = useState(false);
+    const [openDeleteDialog,setOpenDeleteDialog] = useState(false); // Novo: Diálogo de confirmação para delete
     const [tabValue, setTabValue] = useState(0);
     const [formatoAgenda,setFormatoAgenda] = useState('colunas');
     const [anchorEl, setAnchorEl] = React.useState(null);
@@ -158,6 +159,22 @@ const Agenda = props =>{
     const handleRefresh = () => {
         retornaResultados(ano, semestre);
     }
+
+    // Novo: Função para apagar resultados
+    const handleDeleteResults = () => {
+        if (window.confirm(`Tem certeza que deseja apagar TODOS os resultados para ${ano}/${semestre}? Isso é irreversível!`)) {
+            ResultadosDataService.deleteByAnoSemestre(ano, semestre)
+                .then(res => {
+                    console.log("Resultados apagados:", res.data);
+                    alert("Resultados apagados com sucesso!");
+                    setResultados([]);  // Limpa localmente
+                })
+                .catch(err => {
+                    console.error("Erro ao apagar resultados:", err);
+                    alert("Erro ao apagar: " + (err.response?.data?.message || err.message));
+                });
+        }
+    };
 
     const retornaAlocacoes = () =>{
         if(resultados && resultados.length > 0){
@@ -333,6 +350,9 @@ const Agenda = props =>{
                         </Grid>
                         <Grid item xs={6} sm={3}>
                             <Button startIcon={<FileDownloadTwoToneIcon/>} variant="contained" onClick={handleOpenExportar} sx={{fontSize:'12px',paddingTop:'13px',paddingBottom:'12px'}} >Baixar</Button>
+                        </Grid>
+                        <Grid item xs={6} sm={3}>
+                            <Button startIcon={<DeleteIcon/>} onClick={handleDeleteResults} variant="outlined" color="error" sx={{fontSize:'12px',paddingTop:'13px',paddingBottom:'12px'}} >Apagar Resultados</Button>
                         </Grid>
                         <Grid item xs={6} sm={3}>
                             <Button startIcon={<CachedTwoToneIcon/>} onClick={handleRefresh} variant="outlined" sx={{fontSize:'12px',paddingTop:'13px',paddingBottom:'12px'}} >Atualizar</Button>

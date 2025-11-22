@@ -9,11 +9,14 @@ const normalizarString = (str) => {
     return String(str).trim().replace(/^['"]|['"]$/g, '');  // Remove aspas simples/duplas no início/fim
 };
 
-// Função para formatar horário config para HHMM (sem :)
+// Função para formatar horário config para HHMM (sem :) – CORRIGIDA com padding zero
 const formatarHorarioParaDB = (horario) => {
     if (!horario) return '';
-    // Assume input como "08:00" -> "0800"
-    return horario.replace(':', '');  // Remove :, resulta em "0800"
+    let formatted = String(horario).replace(':', '');  // Remove :, resulta em "800" ou "0800"
+    if (formatted.length === 3) {  // Se 3 dígitos (ex: 800), adiciona zero à esquerda
+        formatted = '0' + formatted;  // "0800"
+    }
+    return formatted;
 };
 
 async function dbtomodel(ano, semestre, periodo, diaDaSemana, user, predioAux, minAlunos) {
@@ -94,7 +97,7 @@ async function dbtomodel(ano, semestre, periodo, diaDaSemana, user, predioAux, m
         console.log(`[dbtomodel] ${periodo}/${diaDaSemana}: Total turmas: ${totalTurmas}`);
     }
 
-    // Salas: Normalize disp.dia também
+
     const salasDB = await Sala.find({ user: user._id });
     salasDB.forEach(sala => {
         let dispArray = sala.disponibilidade || [];
@@ -129,8 +132,27 @@ async function dbtomodel(ano, semestre, periodo, diaDaSemana, user, predioAux, m
         return acc;
     }, {});
     if (predioAux) {
-        modelo.distancias.predioAux = {};  // Vazio
+    modelo.distancias.predioAux = {};  // Começa vazio, mas preencha com neutro
+    
+    // CORREÇÃO MELHORADA: Defina distâncias neutras para predioAux (0 = "próximo de todos")
+    // Primeiro, tenta depts das turmas atuais (dinâmico)
+    const todasTurmas = [...modelo.turmasf1, ...modelo.turmasf12, ...modelo.turmasf2];
+    let deptsUnicos = [...new Set(todasTurmas.map(turma => normalizarString(
+        (turma.departamentoOferta || turma.departamentoTurma || '')  // Prioriza dept da turma
+    )))].filter(dept => dept);  // Remove vazios
+    
+    // FALLBACK: Se deptsUnicos vazio (turmas sem dept), use TODOS depts do DB de distancias
+    if (deptsUnicos.length === 0) {
+        deptsUnicos = [...new Set(distanciasDb.map(cur => normalizarString(cur.departamento)))].filter(dept => dept);
+        console.warn(`[dbtomodel] Depts das turmas vazios! Usando fallback: ${deptsUnicos.length} depts totais.`);
     }
+    
+    deptsUnicos.forEach(dept => {
+        modelo.distancias.predioAux[dept] = 0;  // Neutro: 0 (baixo custo); ou 50 para penalidade leve
+    });
+    
+    console.log(`[dbtomodel] Distâncias para predioAux preenchidas: ${deptsUnicos.length} depts com valor 0 (de turmas: ${todasTurmas.length}).`);
+}
 
     // Resumo final (útil, mantém para cada unit)
     console.log(`[dbtomodel] ${periodo}/${diaDaSemana}: RESUMO - Turmas=${totalTurmas}, Salas=${modelo.salas.length}, Distancias=${Object.keys(modelo.distancias).length} prédios`);

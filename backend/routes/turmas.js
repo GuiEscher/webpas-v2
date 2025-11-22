@@ -31,12 +31,11 @@ router.post('/upload-csv', protect, upload.single('file'), async (req, res) => {
     readableFileStream.push(null);
 
     readableFileStream
-        // ======================= A CORREÇÃO FINAL ESTÁ AQUI =======================
         .pipe(csv({ 
             separator: ';',
             mapHeaders: ({ header }) => header.trim().replace(/'/g, '')
         })) 
-        // ========================================================================
+       
         .on('data', (row) => {
             linhaCount++;
             console.log(`\n[Linha ${linhaCount} Bruta Recebida]:`, row);
@@ -92,9 +91,6 @@ router.post('/upload-csv', protect, upload.single('file'), async (req, res) => {
         });
 });
 
-
-// --- SUAS ROTAS ANTIGAS (MANTIDAS INTEGRALMENTE) ---
-// (o resto do arquivo continua igual)
 
 const arrayUnique = array => {
     var a = array.concat();

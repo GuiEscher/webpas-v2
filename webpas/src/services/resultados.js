@@ -1,4 +1,5 @@
 import http from "../http-commom";
+import axios from "axios";
 
 class ResultadosDataService {
     getAll(){
@@ -24,6 +25,11 @@ class ResultadosDataService {
     trocaSala(data,id){
         return http.post(`resultados/update/${id}`,data)
     }
+    deleteByAnoSemestre = (ano, semestre) => {
+    const url = `http://localhost:5000/resultados/delete/${ano}/${semestre}`;
+    console.log('URL DELETE gerada:', url);
+    return axios.delete(url, { withCredentials: true });  // CORREÇÃO: Envia cookies/auth
+}
 
 
 }

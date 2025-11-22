@@ -37,7 +37,7 @@ const StandartConfig = {
     },
     dias:["Segunda","Terça","Quarta","Quinta","Sexta"],
     periodos:["Manhã","Tarde","Noite"],
-    numSalasAux:20,
+    numSalasAux:40,
     capSalasAux:200
 }
 

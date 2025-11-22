@@ -49,9 +49,12 @@ router.route('/').get((req,res)=>{
 router.route('/:ano/:semestre').get((req, res) => {
     const { user } = req;
     if (!user) return res.status(401).json({ error: 'Usuário não autenticado' });
-    Resultado.find({ ano: req.params.ano, semestre: req.params.semestre, user: user._id })
+    const ano = parseInt(req.params.ano);  // CORREÇÃO: Parse para number (matcha DB)
+    const semestre = parseInt(req.params.semestre);
+    if (isNaN(ano) || isNaN(semestre)) return res.status(400).json({ error: 'Ano/Semestre inválidos' });
+    Resultado.find({ ano, semestre, user: user._id })
         .then(resultados => {
-            console.log(`GET: ${resultados.length} resultados para user ${user._id}`);
+            console.log(`GET /:ano/:semestre: ${resultados.length} resultados para user ${user._id}, ano=${ano} (type: ${typeof ano}), semestre=${semestre}`);
             res.json(resultados);
         })
         .catch(err => {
@@ -62,9 +65,12 @@ router.route('/:ano/:semestre').get((req, res) => {
 
 router.route('/:ano/:semestre/:dia/:periodo').get((req,res)=>{
     const {user} = req
+    const ano = parseInt(req.params.ano);  // CORREÇÃO: Parse para number
+    const semestre = parseInt(req.params.semestre);
+    if (isNaN(ano) || isNaN(semestre)) return res.status(400).json({ error: 'Ano/Semestre inválidos' });
     Resultado.find({
-        ano:req.params.ano,
-        semestre:req.params.semestre,
+        ano,
+        semestre,
         diaDaSemana:req.params.dia,
         periodo:req.params.periodo,
         user:user._id
@@ -75,9 +81,12 @@ router.route('/:ano/:semestre/:dia/:periodo').get((req,res)=>{
 
 router.route('/:ano/:semestre/:dia').get((req,res)=>{
     const {user} = req
+    const ano = parseInt(req.params.ano);  // CORREÇÃO: Parse para number
+    const semestre = parseInt(req.params.semestre);
+    if (isNaN(ano) || isNaN(semestre)) return res.status(400).json({ error: 'Ano/Semestre inválidos' });
     Resultado.find({
-        ano:req.params.ano,
-        semestre:req.params.semestre,
+        ano,
+        semestre,
         diaDaSemana:req.params.dia,
         user:user._id
     })
@@ -86,8 +95,8 @@ router.route('/:ano/:semestre/:dia').get((req,res)=>{
 })
 
 router.route('/diaperiodo').post(async (req, res) => {
-    const ano = req.body.ano
-    const semestre = req.body.semestre
+    const ano = parseInt(req.body.ano);  // CORREÇÃO: Parse pra consistência
+    const semestre = parseInt(req.body.semestre);
     const periodo = req.body.periodo
     const diaDaSemana = req.body.diaDaSemana
     const delta = req.body.delta
@@ -106,8 +115,8 @@ router.route('/diaperiodo').post(async (req, res) => {
 })
 
 router.route('/calculalista').post(async (req, res) => {
-    const ano = req.body.ano
-    const semestre = req.body.semestre
+    const ano = parseInt(req.body.ano);  // CORREÇÃO: Garante number
+    const semestre = parseInt(req.body.semestre);
     const delta = parseInt(req.body.delta)
     const lista = req.body.lista
     const predioAux = req.body.predioAux
@@ -115,6 +124,8 @@ router.route('/calculalista').post(async (req, res) => {
     const mipGap = req.body.mipGap
     const tmLim = req.body.tmLim
     const {user} = req
+    
+    if (isNaN(ano) || isNaN(semestre)) return res.status(400).json({ error: 'Ano/Semestre inválidos' });
     
     let resultObj = {}
 
@@ -131,12 +142,14 @@ router.route('/calculalista').post(async (req, res) => {
                 resultObj[unidade.dia][unidade.periodo] = true;
             }
 
-            return Resultado.findOneAndUpdate({
+            const updateResult = await Resultado.findOneAndUpdate({
                 user:user._id,
                 ano:ano,
                 semestre:semestre,
                 diaDaSemana:unidade.dia,
-                periodo:unidade.periodo},{alocacoes:alocacoes},{upsert:true})
+                periodo:unidade.periodo
+            },{alocacoes:alocacoes},{upsert:true});
+            console.log(`SAVE /calculalista: Upsert para ${ano}/${semestre}/${unidade.dia}/${unidade.periodo}, alocacoes=${alocacoes.length}, user=${user._id} (novo doc? ${updateResult ? 'Sim' : 'Não'})`);
 
         } catch (error) {
             console.log(error)
@@ -147,11 +160,9 @@ router.route('/calculalista').post(async (req, res) => {
     })
 
     await Promise.all(listaDePromises)
-    console.log ("Otimização concluida")
+    console.log (`Otimização concluida para ${ano}/${semestre}`)
     return res.json(resultObj)
 })
-
-
 
 router.route('/id/:id').get((req,res)=>{
     Resultado.findById(req.params.id)
@@ -159,6 +170,22 @@ router.route('/id/:id').get((req,res)=>{
         .catch(err => res.status(400).json('Error: '+ err))
 })
 
+router.route('/delete/:ano/:semestre').delete((req, res) => {
+    const { user } = req;
+    if (!user) return res.status(401).json({ error: 'Usuário não autenticado' });
+    const ano = parseInt(req.params.ano);  // Garante número
+    const semestre = parseInt(req.params.semestre);
+    if (isNaN(ano) || isNaN(semestre)) return res.status(400).json({ error: 'Ano/Semestre inválidos' });
+    Resultado.deleteMany({ ano, semestre, user: user._id })
+        .then(deleted => {
+            console.log(`DELETE: Apagados ${deleted.deletedCount} resultados para ${ano}/${semestre}, user ${user._id}`);
+            res.json({ message: `Apagados ${deleted.deletedCount} resultados` });
+        })
+        .catch(err => {
+            console.error('Erro DELETE resultados:', err);
+            res.status(400).json({ error: err.message });
+        });
+});
 
 router.route('/:id').delete((req,res)=>{
     Resultado.findByIdAndDelete(req.params.id)

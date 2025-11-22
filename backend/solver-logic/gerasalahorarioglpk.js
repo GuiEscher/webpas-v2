@@ -67,14 +67,14 @@ async function resolve(modelo, delta, mipGap, tmLim) {
                 indiceResult++;
             }
         }
-        // Vars para H2 (F2)
-        for (let i = turmasF1.length; i < turmas.length; i++) {
+        // Vars para H2 (F2) - CORREÇÃO: Start index correto para F2 (após F1 + F12)
+        for (let i = turmasF1.length + turmasF12.length; i < turmas.length; i++) {
             for (let j = 0; j < salas.length; j++) {
                 result[indiceResult] = { name: `t${i + 1}s${j + 1}h2`, coef: distanciasCalculadas[i][j] };
                 indiceResult++;
             }
         }
-        console.log(`DEBUG resolve: Vars geradas: ${result.length} (esperado: ~${turmas.length * salas.length})`);
+        console.log(`DEBUG resolve: Vars geradas: ${result.length} (esperado: ~${(turmasF1.length + turmasF12.length) * salas.length + turmasF2.length * salas.length})`);
         return result;
     }
 
@@ -98,8 +98,8 @@ async function resolve(modelo, delta, mipGap, tmLim) {
             indiceResult++;
         }
 
-        // Trava turma H2
-        for (let i = turmasF1.length; i < turmas.length; i++) {
+        // Trava turma H2 (F2 apenas) - CORREÇÃO: Loop só para F2
+        for (let i = turmasF1.length + turmasF12.length; i < turmas.length; i++) {
             let varsSoma = new Array();
             let indiceVars = 0;
             for (let j = 0; j < salas.length; j++) {
@@ -121,6 +121,7 @@ async function resolve(modelo, delta, mipGap, tmLim) {
             let indiceVarsH1 = 0;
             let indiceVarsH2 = 0;
 
+            // H1 (F1 + F12)
             for (let i = 0; i < turmasF1.length + turmasF12.length; i++) {
                 varsSomaH1[indiceVarsH1] = { name: `t${i + 1}s${j + 1}h1`, coef: 1 };
                 indiceVarsH1++;
@@ -132,7 +133,8 @@ async function resolve(modelo, delta, mipGap, tmLim) {
             };
             indiceResult++;
 
-            for (let i = turmasF1.length; i < turmas.length; i++) {
+            // H2 (F2 apenas) - CORREÇÃO: Loop só para F2
+            for (let i = turmasF1.length + turmasF12.length; i < turmas.length; i++) {
                 varsSomaH2[indiceVarsH2] = { name: `t${i + 1}s${j + 1}h2`, coef: 1 };
                 indiceVarsH2++;
             }
@@ -172,7 +174,8 @@ async function resolve(modelo, delta, mipGap, tmLim) {
                 indiceResult++;
             }
         }
-        for (let i = turmasF1.length; i < turmas.length; i++) {
+        // Capacidade H2 (F2 apenas) - CORREÇÃO: Loop só para F2
+        for (let i = turmasF1.length + turmasF12.length; i < turmas.length; i++) {
             for (let j = 0; j < salas.length; j++) {
                 result[indiceResult] = {
                     name: `capacidade-t${i + 1}s${j + 1}h2`,
@@ -192,15 +195,15 @@ async function resolve(modelo, delta, mipGap, tmLim) {
     function getBinaries() {
         let result = new Array();
         let indiceResult = 0;
-        // Binaries H1
+        // Binaries H1 (F1 + F12)
         for (let i = 0; i < turmasF1.length + turmasF12.length; i++) {
             for (let j = 0; j < salas.length; j++) {
                 result[indiceResult] = `t${i + 1}s${j + 1}h1`;
                 indiceResult++;
             }
         }
-        // Binaries H2
-        for (let i = turmasF1.length; i < turmas.length; i++) {
+        // Binaries H2 (F2 apenas) - CORREÇÃO: Loop só para F2
+        for (let i = turmasF1.length + turmasF12.length; i < turmas.length; i++) {
             for (let j = 0; j < salas.length; j++) {
                 result[indiceResult] = `t${i + 1}s${j + 1}h2`;
                 indiceResult++;
@@ -233,6 +236,26 @@ async function resolve(modelo, delta, mipGap, tmLim) {
     console.log(`DEBUG resolve: Iniciando GLPK.solve...`);
     const res = glpk.solve(modeloPAS, options);
     console.log(`DEBUG resolve: GLPK output - status: ${res.result.status}, z(obj): ${res.result.z}, vars count: ${Object.keys(res.result.vars || {}).length}`);
+
+    // ADICIONAR: Diagnóstico para status=4 (inviável)
+    if (res.result.status === 4) {
+        console.error(`[ERRO resolve] MODELO INVIÁVEL! Possíveis causas:`);
+        console.error(`- Turmas: ${turmas.length}, Salas: ${salas.length} (se turmas > salas, falha)`);
+        
+        // Cálculo preciso para capacidade
+        const maxTurmaSize = turmas.length > 0 ? Math.max(...turmas.map(t => t.totalTurma || 0)) : 0;
+        const minSalaCap = salas.length > 0 ? Math.min(...salas.map(s => s.capacidade || s.capacidade || 0)) : 0;  // Fallback para 'capacidade' ou 'capacidade'
+        console.error(`- Capacidades: Max turma=${maxTurmaSize} > Min sala=${minSalaCap} + delta=${delta}? (${maxTurmaSize > minSalaCap + delta ? 'SIM - INVIÁVEL!' : 'NÃO'})`);
+        
+        // Média das distâncias na matriz (se alta ~99999, distâncias ruins)
+        const flatDistancias = distanciasCalculadas.flat();
+        const avgDist = flatDistancias.length > 0 ? flatDistancias.reduce((a, b) => a + b, 0) / flatDistancias.length : 0;
+        console.error(`- Distancias: Média na matriz: ${avgDist.toFixed(2)} (se ~${placeholder}, muitas distâncias missing/ruins)`);
+        
+        // Vars com valor 1 (deve ser = turmas.length se factível)
+        const varsComValor1 = Object.values(res.result.vars || {}).filter(v => v === 1).length;
+        console.error(`- Vars com valor 1: ${varsComValor1} (deve ser = turmas.length=${turmas.length} se factível)`);
+    }
 
     function removeZeros(obj) {
         let objNoZeros = { ...obj };
