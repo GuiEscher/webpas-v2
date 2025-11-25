@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import useForm from "./useForm";
-import { Button, Checkbox, Divider, FormControl, FormControlLabel, FormLabel, RadioGroup, TextField } from "@mui/material";
-import { Radio } from "@mui/material";
+import { Button, Checkbox, Divider, FormControl, FormControlLabel, FormLabel, RadioGroup, TextField, Radio } from "@mui/material";
 import { Grid } from "@mui/material";
 import { Box } from "@mui/system";
 import { Typography } from "@mui/material";
@@ -12,6 +11,7 @@ const inicialValues ={
     predio: '',
     nSalas: '',
     capacidade: '',
+    tipoQuadro: 'Indiferente' // Padrão
 }
 
 const formCssClass ={
@@ -108,6 +108,7 @@ const PredioForm = props =>{
         e.preventDefault()
         let disponibilidade = createDispArray()
         if (validate()){
+            // Agora values contem predio, nSalas, capacidade e tipoQuadro
             add(values,disponibilidade,resetForm)
         }
     }
@@ -171,6 +172,24 @@ const PredioForm = props =>{
                         })}
                     />
                 </Grid>
+
+                {/* CAMPO NOVO: Tipo de Quadro */}
+                <Grid item xs={12} sm={6}>
+                    <FormControl component="fieldset">
+                        <FormLabel component="legend" sx={{fontSize: '0.85rem'}}>Tipo de Quadro Predominante</FormLabel>
+                        <RadioGroup
+                            row
+                            name="tipoQuadro"
+                            value={values.tipoQuadro}
+                            onChange={handleInputChange}
+                        >
+                            <FormControlLabel value="Verde" control={<Radio size="small"/>} label="Verde" />
+                            <FormControlLabel value="Branco" control={<Radio size="small"/>} label="Branco" />
+                            <FormControlLabel value="Indiferente" control={<Radio size="small"/>} label="Indif." />
+                        </RadioGroup>
+                    </FormControl>
+                </Grid>
+
                 <Grid item xs={12}>
                 </Grid>
                 <Grid item xs={5}><Typography fontWeight={420}>Disponibilidade</Typography></Grid>
@@ -185,8 +204,8 @@ const PredioForm = props =>{
                 {
                     config.dias.map((dia,index)=>{
                         return(
-                            <Grid item xs ={12}>
-                                <FormControl key={index} sx={{width:'100%'}}>
+                            <Grid item xs ={12} key={index}>
+                                <FormControl sx={{width:'100%'}}>
                                 <Grid container columnSpacing={3} alignItems="center"  justifyContent="flex-start" >
                                     <Grid item xs={5}><FormLabel>{dia}</FormLabel></Grid>
                                     {config.periodos.map((periodo,indexp)=>{

@@ -3,10 +3,10 @@ const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
 const salaSchema = new Schema({
-
     predio: {type:String, required:true, index:true},
     numeroSala:{type:String, required: true},
     capacidade:{type:Number,required:true}, 
+    tipoQuadro: { type: String, enum: ['Verde', 'Branco', 'Indiferente'], default: 'Indiferente' },
     disponibilidade:[{
         dia:{type:String,required:true},
         periodo:{type:String,required:true},

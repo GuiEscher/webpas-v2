@@ -97,6 +97,7 @@ router.post('/uploadPlanilha', protect, upload.single('file'), async (req, res) 
                     numeroSala,
                     capacidade: Cap,
                     disponibilidade,
+                    tipoQuadro: 'Indiferente', // Default para importação via Planilha
                     terreo: false, // Default
                     acessivel: false, // Default
                     user: userId
@@ -116,7 +117,8 @@ router.post('/uploadPlanilha', protect, upload.single('file'), async (req, res) 
     }
 });
 
-// --- ROTAS ANTIGAS (mantidas e corrigidas) ---
+// --- ROTAS ---
+
 router.route('/').get(protect, (req, res) => {
     const user = req.user;
     Sala.find({ user: user._id })
@@ -131,9 +133,13 @@ router.route('/p/').get(protect, (req, res) => {
         .catch(err => res.status(400).json(err));
 });
 
+// ATUALIZADO: Recebe tipoQuadro e salva nas salas
 router.route('/addPredio').post(protect, (req, res) => {
-    const { predio, capacidade, nSalas, disponibilidade } = req.body;
+    const { predio, capacidade, nSalas, disponibilidade, tipoQuadro } = req.body;
     const user = req.user;
+    
+    const quadroDefinido = tipoQuadro || 'Indiferente';
+
     Sala.find({ predio: predio, user: user._id })
         .then(salas => {
             if (salas.length > 0) {
@@ -144,6 +150,7 @@ router.route('/addPredio').post(protect, (req, res) => {
                 numeroSala: 'Sala ' + (i + 1),
                 capacidade: capacidade,
                 disponibilidade: disponibilidade,
+                tipoQuadro: quadroDefinido, // Salva o tipo de quadro
                 user: user._id
             }));
             Sala.insertMany(novasSalas)
@@ -181,22 +188,36 @@ router.route('/:predio/delete').delete(protect, (req, res) => {
         .catch(err => res.status(400).json('Error: ' + err));
 });
 
+// ATUALIZADO: Adicionar sala avulsa com quadro específico
 router.route('/:predio/addSala').post(protect, (req, res) => {
     const predio = req.params.predio;
-    const { numeroSala, capacidade, disponibilidade } = req.body;
+    const { numeroSala, capacidade, disponibilidade, tipoQuadro } = req.body;
     const user = req.user;
-    const novaSala = new Sala({ predio, numeroSala, capacidade, disponibilidade, user: user._id });
+    
+    const novaSala = new Sala({ 
+        predio, 
+        numeroSala, 
+        capacidade, 
+        disponibilidade, 
+        tipoQuadro: tipoQuadro || 'Indiferente',
+        user: user._id 
+    });
+
     novaSala.save()
         .then(() => res.json('Sala adicionada'))
         .catch(err => { res.status(400).json(err) });
 });
 
+// ATUALIZADO: Editar sala (incluindo quadro)
 router.route('/:predio/update/:id').post(protect, (req, res) => {
     Sala.findById(req.params.id)
         .then(sala => {
             sala.numeroSala = req.body.numeroSala;
             sala.capacidade = req.body.capacidade;
             sala.disponibilidade = req.body.disponibilidade;
+            if(req.body.tipoQuadro) {
+                sala.tipoQuadro = req.body.tipoQuadro;
+            }
             sala.save()
                 .then(() => res.json('Sala atualizada'))
                 .catch(err => res.status(400).json(err));

@@ -4,7 +4,8 @@ const Schema = mongoose.Schema
 
 const turmaSchema = new Schema({
     idTurma: {type:String, trim:true},
-    campus: {type:String,trim:true},
+    // Default São Carlos para manter compatibilidade
+    campus: {type:String, trim:true, default: 'São Carlos'}, 
     departamentoTurma: {type:String, trim:true},
     codDisciplina: {type:String, trim:true},
     turma: {type:String, required:true, trim:true},
@@ -15,15 +16,19 @@ const turmaSchema = new Schema({
     horarioInicio: {type:String, required:true, trim:true},
     horarioFim: {type:String, required:true, trim:true},
     alocadoChefia: {type:Boolean, trim:true}, 
-    creditosAula: {type:Number,  trim:true},
+    creditosAula: {type:Number, trim:true},
     docentes: {type:String,trim:true},
     ano:{type:Number,required:true},
     semestre:{type:Number, required:true},
-    user:{type:mongoose.Types.ObjectId,ref:'User',required:true}
+    user:{type:mongoose.Types.ObjectId,ref:'User',required:true},
+    tipoQuadro: {type:String, enum: ['Verde', 'Branco', 'Indiferente'], default: 'Indiferente'}
 })
-turmaSchema.index({turma:1,nomeDisciplina:1,diaDaSemana:1,horarioInicio:1,ano:1,semestre:1,user:1},{ unique:true})
+
+// === IMPORTANTE ===
+// Este índice permite turmas com mesmo nome/horário se o CAMPUS for diferente.
+turmaSchema.index({campus: 1, turma:1, nomeDisciplina:1, diaDaSemana:1, horarioInicio:1, ano:1, semestre:1, user:1},{ unique:true})
+
 turmaSchema.index({ano:1,semestre:1,user:1})
-//turmaSchema.index({docente:1,diaDaSemana:1,horarioInicio:1},{unique:true,sparse:true}) 
 
 const Turma = mongoose.model('Turma',turmaSchema)
 

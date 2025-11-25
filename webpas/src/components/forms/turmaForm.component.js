@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import useForm from "./useForm";
-import { Button, Divider, FormControl, FormControlLabel, FormLabel, RadioGroup, TextField } from "@mui/material";
+import { Button, Divider, FormControl, FormControlLabel, FormLabel, RadioGroup, TextField, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { Radio } from "@mui/material";
 import { Grid } from "@mui/material";
 import { Box } from "@mui/system";
@@ -13,7 +13,7 @@ const inicialValues ={
     idTurma: '',
     nomeDisciplina: '',
     turma : '',
-    campus :'',
+    campus :'São Carlos', // Valor padrão inicial
     departamentoOferta: '',
     departamentoTurma : '',
     codDisciplina : '',
@@ -24,7 +24,8 @@ const inicialValues ={
     creditosAula: '',
     docentes: '',
     ano: new Date().getFullYear(),
-    semestre: 1
+    semestre: 1,
+    tipoQuadro: 'Indiferente' // Valor padrão
 }
 
 const formCssClass ={
@@ -47,17 +48,15 @@ const TurmaForm = props =>{
         handleFormTitle(updating)
         if(turmaEdit != null){
             setValues({
-                ...turmaEdit
+                ...turmaEdit,
+                // Garante que se vier do banco antigo (sem campo), assume Indiferente
+                tipoQuadro: turmaEdit.tipoQuadro || 'Indiferente',
+                campus: turmaEdit.campus || 'São Carlos'
             })
         }else{
 
         }
     },[turmaEdit])
-
-    useEffect(()=>{
-        console.log("HF: ",horariosInicio)
-        console.log("HF: ",horariosFim)
-    },[horariosFim,horariosInicio])
 
     const{
         values,
@@ -67,6 +66,13 @@ const TurmaForm = props =>{
         setErros,
         resetForm,
     }=useForm(inicialValues)
+
+    // Handler específico para o Toggle de Campus
+    const handleCampusToggle = (event, newCampus) => {
+        if(newCampus !== null) {
+            setValues({ ...values, campus: newCampus });
+        }
+    }
 
     const validate = () =>{
         let temp ={}
@@ -83,7 +89,6 @@ const TurmaForm = props =>{
             if(Number.isInteger(Number(values.totalTurma)))  {
                 temp.totalTurma = ""
             }else{
-                console.log(values.totalTurma)
                 temp.totalTurma = "Este campo deve conter um número"
             }
         }
@@ -98,11 +103,17 @@ const TurmaForm = props =>{
     const handleSubmit = e =>{
         e.preventDefault()
         if (validate()){
+            // Se for São Carlos, forçamos o quadro a ser Indiferente para limpar sujeira de dados caso tenha trocado
+            const payload = { ...values };
+            if (payload.campus === 'São Carlos') {
+                payload.tipoQuadro = 'Indiferente';
+            }
+
             if (values.departamentoTurma === ''){
-                let {departamentoTurma,...upValues} = values
+                let {departamentoTurma,...upValues} = payload
                 addOrEdit(updating,upValues,resetForm)
             }else{
-                addOrEdit(updating,values,resetForm)
+                addOrEdit(updating,payload,resetForm)
             }
         }
     }
@@ -126,6 +137,46 @@ const TurmaForm = props =>{
                     </IconButton>
                 </Grid>
                 <Grid item xs={12}><Divider/></Grid> 
+                
+                {/* --- MUDANÇA: SELETOR DE CAMPUS EM DESTAQUE --- */}
+                <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth>
+                        <FormLabel sx={{mb:1}}>Campus</FormLabel>
+                        <ToggleButtonGroup
+                            color="primary"
+                            value={values.campus}
+                            exclusive
+                            onChange={handleCampusToggle}
+                            fullWidth
+                            size="small"
+                        >
+                            <ToggleButton value="São Carlos">São Carlos</ToggleButton>
+                            <ToggleButton value="Sorocaba">Sorocaba</ToggleButton>
+                        </ToggleButtonGroup>
+                    </FormControl>
+                </Grid>
+
+                {/* --- MUDANÇA: RENDERIZAÇÃO CONDICIONAL DO QUADRO --- */}
+                {values.campus === 'Sorocaba' && (
+                     <Grid item xs={12} sm={6}>
+                        <FormControl component="fieldset" fullWidth sx={{border: '1px solid #ccc', borderRadius: 1, p: 1}}>
+                            <FormLabel component="legend" sx={{fontSize:'0.8rem'}}>Preferência de Quadro (Saúde)</FormLabel>
+                            <RadioGroup
+                                row
+                                aria-label="tipoQuadro"
+                                name="tipoQuadro"
+                                value={values.tipoQuadro}
+                                onChange={handleInputChange}
+                                sx={{justifyContent: 'space-around'}}
+                            >
+                                <FormControlLabel value="Verde" control={<Radio size="small"/>} label="Verde" />
+                                <FormControlLabel value="Branco" control={<Radio size="small"/>} label="Branco" />
+                                <FormControlLabel value="Indiferente" control={<Radio size="small"/>} label="Indif." />
+                            </RadioGroup>
+                        </FormControl>
+                    </Grid>
+                )}
+
                 <Grid item xs={12} sm={6}>
                     <TextField 
                         variant="outlined"
@@ -160,14 +211,9 @@ const TurmaForm = props =>{
                         })}
                     />
                 </Grid>
-                <Grid item xs={12} sm={6}>
-                    <TextField 
-                        variant="outlined"
-                        label="Campus"
-                        name = "campus"
-                        onChange={handleInputChange}
-                        value ={values.campus}></TextField>
-                </Grid>
+                
+                {/* Removi o campo antigo de Campus texto manual pois agora temos o Toggle acima */}
+                
                 <Grid item xs={12} sm={6}>
                     <TextField 
                         variant="outlined"
@@ -192,9 +238,9 @@ const TurmaForm = props =>{
                 <Grid item xs={12} sm={6}>
                     <TextField 
                         variant="outlined"
-                        name = "idDisciplina"
+                        name = "codDisciplina"
                         onChange={handleInputChange}
-                        label="Código da Disciplinas"
+                        label="Código da Disciplina" // Corrigi typo 'Disciplinas' para 'Disciplina'
                         value ={values.codDisciplina}></TextField>
                 </Grid>
                 <Grid item xs={12} sm={6}>

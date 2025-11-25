@@ -1,12 +1,11 @@
-import React from "react";
-import { useState } from "react";
+import React, { useState } from "react";
 import Select from "./select.component";
-import { Grid, Typography, IconButton, Button, RadioGroup, Radio, FormControlLabel, FormControl, FormLabel, LinearProgress } from "@mui/material";
+import { Grid, Typography, IconButton, Button, RadioGroup, Radio, FormControlLabel, FormControl, FormLabel, LinearProgress, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
 import styled from "@emotion/styled";
 import { Box } from "@mui/system";
 import useForm from "./useForm";
-import TurmasDataService from "../../services/turmas"; // Usaremos o serviço para enviar o arquivo
+import TurmasDataService from "../../services/turmas";
 
 const Input = styled('input')({
     display: 'none',
@@ -21,7 +20,6 @@ const modalStyleFile = {
     transform: 'translate(-50%, -50%)',
     width: '90%',
     p: 4,
-    // ... (mantive seus outros breakpoints de estilo)
     '@media (min-width: 900px)': { width: '80%' },
     '@media (min-width: 1050px)': { width: '70%' },
     '@media (min-width: 1400px)': { width: '60%' },
@@ -38,7 +36,10 @@ export default function FileFormTurma(props) {
     const { title, closeButton, anos, handleResponse, setListaErros } = props;
 
     const [loading, setLoading] = useState(false);
-    const [file, setFile] = useState(null); // Estado para guardar o arquivo selecionado
+    const [file, setFile] = useState(null);
+    
+    // NOVO ESTADO: Campus Padrão (São Carlos)
+    const [campus, setCampus] = useState('São Carlos');
 
     const {
         values,
@@ -47,65 +48,63 @@ export default function FileFormTurma(props) {
         setErros,
     } = useForm(inicialValues);
 
-    // Atualiza o estado com o arquivo escolhido e limpa erros antigos
     const handleFileChoose = (e) => {
         if (e.target.files && e.target.files[0]) {
             setFile(e.target.files[0]);
         }
     };
     
+    // Handler para mudança de campus
+    const handleCampusChange = (event, newCampus) => {
+        if (newCampus !== null) {
+            setCampus(newCampus);
+        }
+    };
+
    const handleSubmit = async () => {
-    // 1. Validação inicial para garantir que ano e arquivo foram selecionados
     if (!validate()) return;
     if (!file) {
         alert("Por favor, selecione um arquivo CSV para enviar.");
         return;
     }
 
-    // 2. Ativa o estado de carregamento (mostra a barra de progresso)
     setLoading(true);
 
-    // 3. Monta o payload com o arquivo e os dados do formulário
     const formData = new FormData();
     formData.append('file', file);
     formData.append('ano', values.ano);
     formData.append('semestre', values.semestre);
+    // Enviando o campus escolhido
+    formData.append('campusSelecionado', campus);
 
     try {
-        // 4. Tenta enviar os dados para o backend
         const res = await TurmasDataService.uploadCSV(formData);
         
-        // Em caso de sucesso, passa a resposta para os componentes pais
         handleResponse(res); 
         if (res.data.erros) {
             setListaErros(res.data.erros);
         }
         
-        // 5. Desativa o carregamento e fecha o modal APÓS o sucesso
         setLoading(false);
         closeButton();
 
     } catch (error) {
-        // 6. Bloco de captura de erro robusto
         console.error("Erro na requisição:", error);
-
-        // Garante que 'errorResponse' sempre será um objeto válido
         const errorResponse = error.response 
             ? error.response 
             : { data: { msg: "Erro de conexão: não foi possível conectar ao servidor." } };
         
-        // Passa o erro formatado para os componentes pais
         handleResponse(errorResponse);
 
         if (errorResponse.data?.erros) {
             setListaErros(errorResponse.data.erros);
         }
 
-        // 7. Desativa o carregamento e fecha o modal APÓS o erro
         setLoading(false);
         closeButton();
     }
 };
+
     const validate = () => {
         let temp = {};
         temp.ano = values.ano ? "" : "O ano é obrigatório";
@@ -122,10 +121,27 @@ export default function FileFormTurma(props) {
                 <Grid item xs={1}>
                     <IconButton onClick={closeButton} disabled={loading}><CloseIcon /></IconButton>
                 </Grid>
+
+                {/* --- NOVO SELETOR DE CAMPUS --- */}
+                <Grid item xs={12} sx={{display:'flex', justifyContent:'center', my: 2}}>
+                    <ToggleButtonGroup
+                        color="primary"
+                        value={campus}
+                        exclusive
+                        onChange={handleCampusChange}
+                        aria-label="Selectionar Campus"
+                        size="small"
+                    >
+                        <ToggleButton value="São Carlos">São Carlos</ToggleButton>
+                        <ToggleButton value="Sorocaba">Sorocaba</ToggleButton>
+                    </ToggleButtonGroup>
+                </Grid>
+                {/* ------------------------------- */}
+
                 <Grid item xs={12} mb={1}>
                     <label htmlFor='readCsvFile'>
                         <Input
-                            accept=".csv" // MUDANÇA: Aceitar apenas .csv
+                            accept=".csv"
                             id="readCsvFile"
                             type="file"
                             onChange={handleFileChoose}
