@@ -8,8 +8,7 @@ const { Readable } = require('stream');
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-// ... imports (manter os mesmos)
-
+// --- ROTA DE UPLOAD CSV ---
 router.post('/upload-csv', protect, upload.single('file'), async (req, res) => {
     console.log('--- ROTA /upload-csv ACIONADA ---');
 
@@ -20,24 +19,23 @@ router.post('/upload-csv', protect, upload.single('file'), async (req, res) => {
     const { ano, semestre, campusSelecionado } = req.body;
     const userId = req.user._id;
 
-    console.log(`[INFO] Processando upload para: ${campusSelecionado || 'São Carlos'} | ${ano}/${semestre}`);
+    console.log(`[INFO] Upload para: ${campusSelecionado || 'São Carlos'} | ${ano}/${semestre}`);
 
     if (!ano || !semestre) {
         return res.status(400).json({ msg: 'Ano e semestre são obrigatórios.' });
     }
 
-    // --- DETECÇÃO AUTOMÁTICA DE SEPARADOR ---
+    // 1. Detecção de Separador (; ou ,)
     const fileContent = req.file.buffer.toString('utf8');
     const primeiraLinha = fileContent.split('\n')[0];
-    let separator = ';'; // Padrão
     
-    // Se tiver mais vírgulas que ponto-e-vírgulas, assumimos vírgula
-    if ((primeiraLinha.match(/,/g) || []).length > (primeiraLinha.match(/;/g) || []).length) {
-        separator = ',';
-    }
+    const countVirgula = (primeiraLinha.match(/,/g) || []).length;
+    const countPontoVirgula = (primeiraLinha.match(/;/g) || []).length;
     
-    console.log(`[DEBUG] Separador detectado: '${separator}' (Baseado na linha: ${primeiraLinha.substring(0, 50)}...)`);
-    // ----------------------------------------
+    let separator = ';'; 
+    if (countVirgula > countPontoVirgula) separator = ',';
+    
+    console.log(`[DEBUG] Separador detectado: '${separator}'`);
 
     const turmasParaSalvar = [];
     let linhaCount = 0;
@@ -48,140 +46,156 @@ router.post('/upload-csv', protect, upload.single('file'), async (req, res) => {
 
     readableFileStream
         .pipe(csv({ 
-            separator: separator, // Usa o separador detectado
+            separator: separator, 
             mapHeaders: ({ header }) => header.trim().replace(/'/g, '').replace(/"/g, '').toLowerCase()
         })) 
         .on('data', (row) => {
             linhaCount++;
-
-            // [DEBUG AVANÇADO] Mostra a primeira linha lida para conferirmos as colunas
-            if (linhaCount === 1) {
-                console.log('[DEBUG] Colunas lidas pelo Parser:', Object.keys(row));
-                console.log('[DEBUG] Exemplo de linha bruta:', row);
-            }
-
             try {
                 let novaTurma = {};
 
-                // === LÓGICA SOROCABA ===
-                if (campusSelecionado === 'Sorocaba') {
-                    
-                    // Verificação se as colunas essenciais existem no CSV de Sorocaba
-                    // Você disse que as colunas são: cod_discip, nome, turma...
-                    if (!row['cod_discip'] && !row['nome']) {
-                        // Se falhar aqui, o parser não achou as colunas com esses nomes exatos
-                        return; 
-                    }
+                // --- 1. CORREÇÃO: Turma Vazia vira 'A' ---
+                let letraTurma = row['turma'];
+                if (!letraTurma || String(letraTurma).trim() === '' || String(letraTurma).toLowerCase() === 'null') {
+                    letraTurma = 'A';
+                }
 
-                    // Tratamento Campus
+                // --- 2. CORREÇÃO: Alocado Chefia (true, t, 1, sim) ---
+                let isAlocadoChefia = false;
+                const rawAlocado = row['alocado_chefia'];
+                if (rawAlocado) {
+                    const val = String(rawAlocado).trim().toLowerCase();
+                    // Verifica todas as variações possíveis de "Sim"
+                    if (['true', 't', '1', 'sim', 's', 'yes', 'y'].includes(val)) {
+                        isAlocadoChefia = true;
+                    }
+                }
+
+                // --- LÓGICA POR CAMPUS ---
+                if (campusSelecionado === 'Sorocaba') {
+                    if (!row['cod_discip'] && !row['nome']) return;
+
+                    // Tratamento de Campus (Null vira Sorocaba)
                     let campusValue = row['campus'];
-                    if (!campusValue || String(campusValue).trim() === '' || String(campusValue).toLowerCase() === 'null') {
+                    const campusCheck = String(campusValue || '').trim().toLowerCase();
+                    if (!campusValue || campusCheck === '' || campusCheck === 'null' || campusCheck === '(null)') {
                         campusValue = 'Sorocaba';
                     }
 
-                    // Tratamento Booleanos (alocado_chefia)
-                    const alocadoStr = row['alocado_chefia'] ? String(row['alocado_chefia']).toLowerCase() : 'false';
-                    const isAlocadoChefia = (alocadoStr === 'true' || alocadoStr === 'sim' || alocadoStr === 's');
+                    const hInicio = row['hora_inicio'] ? String(Number(row['hora_inicio'])) : '0';
+                    const hFim = row['hora_termino'] ? String(Number(row['hora_termino'])) : '0';
 
                     novaTurma = {
-                        idTurma: `${row['cod_discip'] || ''}-${row['turma'] || ''}`,
+                        idTurma: `${row['cod_discip'] || ''}-${letraTurma}`,
                         campus: campusValue,
                         departamentoTurma: row['departamento'] || 'N/A',
                         codDisciplina: row['cod_discip'] || 'N/A',
-                        turma: row['turma'] || 'N/A',
+                        turma: letraTurma, 
                         nomeDisciplina: row['nome'] || 'N/A',
                         totalTurma: Number(row['numero_vagas']) || 0,
                         departamentoOferta: row['departamento'] || 'N/A',
                         diaDaSemana: row['dia'] || 'N/A',
-                        horarioInicio: String(row['hora_inicio'] || '0').padStart(4, '0'),
-                        horarioFim: String(row['hora_termino'] || '0').padStart(4, '0'), // Sorocaba usa hora_termino
+                        horarioInicio: hInicio,
+                        horarioFim: hFim, 
                         creditosAula: Number(row['cred_aula']) || 0,
                         docentes: row['ministrantes'] || 'N/A',
                         ano: Number(ano),
                         semestre: Number(semestre),
                         user: userId,
-                        alocadoChefia: isAlocadoChefia,
+                        alocadoChefia: isAlocadoChefia, // Salva o booleano correto
                         tipoQuadro: 'Indiferente'
                     };
-                } 
-                // === LÓGICA SÃO CARLOS ===
-                else {
-                    if (!row['cod_discip'] && !row['nome']) return;
+                } else {
+                    // São Carlos
+                    if ((!row['cod_discip'] || row['cod_discip'] === '') && (!row['nome'] || row['nome'] === '')) return;
+
+                    const hInicioSC = row['hora_inicio'] ? String(Number(row['hora_inicio'])) : '0';
+                    const hFimSC = row['hora_fim'] ? String(Number(row['hora_fim'])) : '0';
 
                     novaTurma = {
-                        idTurma: `${row['cod_discip'] || ''}-${row['turma'] || ''}`,
-                        campus: row['campus'] || 'São Carlos',
+                        idTurma: `${row['cod_discip'] || ''}-${letraTurma}`, 
+                        campus: 'São Carlos',
                         departamentoTurma: row['departamento'] || 'N/A',
                         codDisciplina: row['cod_discip'] || 'N/A',
-                        turma: row['turma'] || 'N/A',
+                        turma: letraTurma, 
                         nomeDisciplina: row['nome'] || 'N/A',
                         totalTurma: Number(row['numero_vagas']) || 0,
                         departamentoOferta: row['departamento'] || 'N/A',
                         diaDaSemana: row['dia'] || 'N/A',
-                        horarioInicio: String(row['hora_inicio'] || '0').padStart(4, '0'),
-                        horarioFim: String(row['hora_fim'] || '0').padStart(4, '0'),
+                        horarioInicio: hInicioSC,
+                        horarioFim: hFimSC,
                         creditosAula: Number(row['cred_aula']) || 0,
                         docentes: row['ministrantes'] || 'N/A',
                         ano: Number(ano),
                         semestre: Number(semestre),
                         user: userId,
+                        alocadoChefia: isAlocadoChefia, // Salva o booleano correto
                         tipoQuadro: 'Indiferente'
                     };
                 }
-
-                // Push
                 turmasParaSalvar.push(novaTurma);
-
-            } catch (e) {
-                console.error(`Erro processando linha ${linhaCount}`, e);
-            }
+            } catch (e) { console.error(`Erro processando linha ${linhaCount}`, e); }
         })
         .on('end', async () => {
-            console.log(`\n[RESUMO] Linhas lidas: ${linhaCount} | Válidas para salvar: ${turmasParaSalvar.length}`);
-
+            console.log(`\n[RESUMO] Linhas lidas: ${linhaCount} | Válidas: ${turmasParaSalvar.length}`);
+            
             if (turmasParaSalvar.length === 0) {
-                // Aqui está o seu erro 400. Vamos mandar uma mensagem melhor pro frontend.
-                return res.status(400).json({ 
-                    msg: `Erro: CSV lido, mas nenhuma turma identificada. Separador usado: '${separator}'. Verifique se as colunas 'cod_discip' e 'nome' existem.` 
-                });
+                return res.status(400).json({ msg: `Erro: Nenhuma turma identificada. Verifique o arquivo.` });
             }
 
             try {
                 await Turma.insertMany(turmasParaSalvar, { ordered: false });
-                res.status(201).json({ msg: `${turmasParaSalvar.length} turmas salvas com sucesso!` });
+                res.status(201).json({ msg: `${turmasParaSalvar.length} turmas processadas com sucesso!` });
             } catch (error) {
                 if (error.code === 11000 || (error.writeErrors && error.writeErrors.length > 0)) {
                     const duplicados = error.writeErrors ? error.writeErrors.length : 0;
-                    return res.status(201).json({ msg: `Salvas: ${turmasParaSalvar.length - duplicados}. Duplicadas ignoradas: ${duplicados}.` });
+                    const salvos = turmasParaSalvar.length - duplicados;
+                    return res.status(201).json({ msg: `Upload parcial: ${salvos} novas turmas salvas. (${duplicados} já existiam).` });
                 }
-                console.error(error);
                 res.status(500).json({ msg: 'Erro ao salvar no banco.', error: error.message });
             }
         })
         .on('error', (error) => {
-            console.error(error);
-            res.status(500).json({ msg: 'Erro fatal ao ler CSV.' });
+            res.status(500).json({ msg: 'Erro fatal ao ler CSV.', error: error.message });
         });
 });
 
-// ... (Mantenha o resto das rotas GET, DELETE, ADD manual igual ao anterior) ...
-// Abaixo apenas para garantir que o arquivo não quebre se você copiar e colar
-const arrayUnique = array => {
-    var a = array.concat();
-    for(var i=0; i<a.length; ++i) {
-        for(var j=i+1; j<a.length; ++j) {
-            if(a[i] === a[j])
-                a.splice(j--, 1);
-        }
-    }
-    return a;
-}
+// --- ROTAS PARA GERENCIAMENTO DE PERÍODOS ---
+
+router.get('/info/semestres-disponiveis', protect, async (req, res) => {
+    try {
+        const user = req.user;
+        const periodos = await Turma.aggregate([
+            { $match: { user: user._id } },
+            { $group: { _id: { ano: "$ano", semestre: "$semestre" } } },
+            { $sort: { "_id.ano": -1, "_id.semestre": -1 } }
+        ]);
+        const formatado = periodos.map(p => ({ ano: p._id.ano, semestre: p._id.semestre }));
+        res.json(formatado);
+    } catch (err) { res.status(400).json(err); }
+});
+
+router.post('/delete-periodos', protect, async (req, res) => {
+    const { periodos } = req.body; 
+    const user = req.user;
+    if (!periodos || periodos.length === 0) return res.status(400).json({ msg: "Nenhum período selecionado." });
+
+    try {
+        const query = {
+            user: user._id,
+            $or: periodos.map(p => ({ ano: p.ano, semestre: p.semestre }))
+        };
+        const result = await Turma.deleteMany(query);
+        res.json({ msg: `${result.deletedCount} turmas deletadas com sucesso.` });
+    } catch (err) { res.status(400).json(err); }
+});
+
+// --- ROTAS PADRÃO ---
+
+const arrayUnique = array => [...new Set(array)];
 
 router.route('/').get(protect,(req,res)=>{
-    const user = req.user
-    Turma.find({user:user._id})
-        .then(turmas => res.json(turmas))
-        .catch(err => res.status(400).json(err))
+    Turma.find({user:req.user._id}).then(turmas => res.json(turmas)).catch(err => res.status(400).json(err))
 })
 
 router.route('/d/').get(protect,(req,res)=>{
@@ -197,76 +211,86 @@ router.route('/d/').get(protect,(req,res)=>{
 })
 
 router.route('/:ano/:semestre').get(protect,(req,res)=>{
-    const user = req.user
-    Turma.find({ano:req.params.ano,semestre:req.params.semestre,user:user._id})
-        .then(turmas => res.json(turmas))
-        .catch(err => res.json(err))
+    Turma.find({ano:req.params.ano,semestre:req.params.semestre,user:req.user._id})
+        .then(turmas => res.json(turmas)).catch(err => res.json(err))
 })
 
 router.route('/dep/').get(protect,(req,res)=>{
-    const user = req.user
-    Turma.find({user:user._id}).distinct('departamentoOferta')
-        .then(turmas => res.json(turmas))
-        .catch(err => res.status(400).json(err))
+    Turma.find({user:req.user._id}).distinct('departamentoOferta')
+        .then(turmas => res.json(turmas)).catch(err => res.status(400).json(err))
 })
 
 router.route('/add').post(protect,(req,res) =>{
-    const { idTurma, campus, departamentoTurma, codDisciplina, turma, nomeDisciplina, totalTurma, departamentoOferta, diaDaSemana, horarioInicio, horarioFim, creditosAula, creditosPratico, docente, ano, semestre, tipoQuadro } = req.body;
+    const { idTurma, campus, departamentoTurma, codDisciplina, turma, nomeDisciplina, totalTurma, departamentoOferta, diaDaSemana, horarioInicio, horarioFim, creditosAula, creditosPratico, docente, ano, semestre, tipoQuadro, alocadoChefia } = req.body;
     const user = req.user;
     
+    const hInicio = horarioInicio ? String(Number(horarioInicio)) : '';
+    const hFim = horarioFim ? String(Number(horarioFim)) : '';
     const valorQuadro = tipoQuadro || 'Indiferente';
     const valorCampus = campus || 'São Carlos';
-
-    const novaTurma = new Turma({ idTurma, campus: valorCampus, departamentoTurma, codDisciplina, turma, nomeDisciplina, totalTurma, departamentoOferta, diaDaSemana, horarioInicio, horarioFim, creditosAula, creditosPratico, docente, ano, semestre, user: user._id, tipoQuadro: valorQuadro });
     
-    novaTurma.save()
-        .then(() => res.json('Turma adicionada'))
-        .catch(err => res.status(400).json(err));
+    const letraTurma = (turma && turma.trim() !== '') ? turma : 'A';
+    const finalIdTurma = idTurma || `${codDisciplina}-${letraTurma}`;
+
+    const novaTurma = new Turma({ 
+        idTurma: finalIdTurma, 
+        campus: valorCampus, 
+        departamentoTurma, 
+        codDisciplina, 
+        turma: letraTurma, 
+        nomeDisciplina, 
+        totalTurma, 
+        departamentoOferta, 
+        diaDaSemana, 
+        horarioInicio: hInicio, 
+        horarioFim: hFim, 
+        creditosAula, 
+        creditosPratico, 
+        docente, 
+        ano, 
+        semestre, 
+        user: user._id, 
+        tipoQuadro: valorQuadro,
+        alocadoChefia: alocadoChefia || false 
+    });
+    
+    novaTurma.save().then(() => res.json('Turma adicionada')).catch(err => res.status(400).json(err));
 })
 
 router.route('/:id').get(protect,(req,res)=>{
-    Turma.findById(req.params.id)
-        .then(turma => res.json(turma))
-        .catch(err => res.status(400).json(err))
+    Turma.findById(req.params.id).then(turma => res.json(turma)).catch(err => res.status(400).json(err))
 })
 
 router.route('/arquivoturma').post(protect,async (req,res) =>{ 
     const novasTurmas = req.body.novasTurmas
-    Turma.insertMany(novasTurmas,{ordered:false})
-        .then(()=> res.json('Turmas adicionadas'))
-        .catch(err =>{
-            res.status(400).json(err)}) 
+    Turma.insertMany(novasTurmas,{ordered:false}).then(()=> res.json('Turmas adicionadas')).catch(err =>{ res.status(400).json(err)}) 
 })
 
 router.route('/delete/:id').delete(protect,(req,res)=>{
-    Turma.findByIdAndDelete(req.params.id)
-        .then(()=> res.json('Turma deletada'))
-        .catch(err => res.status(400).json(err))
+    Turma.findByIdAndDelete(req.params.id).then(()=> res.json('Turma deletada')).catch(err => res.status(400).json(err))
 })
 
 router.route('/deleteMany').post(protect,(req,res)=>{
     const turmasIds = req.body.turmasID
-    Turma.deleteMany({_id:{$in:turmasIds}})
-        .then(()=> res.json('Turmas deletadas'))
-        .catch(err => res.status(400).json(err))
+    Turma.deleteMany({_id:{$in:turmasIds}}).then(()=> res.json('Turmas deletadas')).catch(err => res.status(400).json(err))
 })
 
 router.route('/delete/:ano/:semestre').delete(protect,(req,res)=>{
-    const user = req.user
     const {ano,semestre} = req.params
-    Turma.deleteMany({user:user._id,ano:ano,semestre:semestre})
-        .then(()=>res.json('Turmas deletadas'))
-        .catch(err=> res.status(400).json(err))
-
+    Turma.deleteMany({user:req.user._id,ano:ano,semestre:semestre}).then(()=>res.json('Turmas deletadas')).catch(err=> res.status(400).json(err))
 })
 
 router.route('/update/:id').post(protect,(req,res)=>{
     Turma.findById(req.params.id)
         .then(turma => {
             Object.assign(turma, req.body);
-            turma.save()
-                .then(() => res.json('Turma atualizada'))
-                .catch(err => res.status(400).json(err));
+            if (turma.horarioInicio) turma.horarioInicio = String(Number(turma.horarioInicio));
+            if (turma.horarioFim) turma.horarioFim = String(Number(turma.horarioFim));
+            
+            if (!turma.turma || turma.turma.trim() === '') turma.turma = 'A';
+            if (turma.codDisciplina && turma.turma) turma.idTurma = `${turma.codDisciplina}-${turma.turma}`;
+
+            turma.save().then(() => res.json('Turma atualizada')).catch(err => res.status(400).json(err));
         })
         .catch(err => res.status(400).json(err));
 })

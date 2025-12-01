@@ -4,7 +4,6 @@ const Schema = mongoose.Schema
 
 const turmaSchema = new Schema({
     idTurma: {type:String, trim:true},
-    // Default São Carlos para manter compatibilidade
     campus: {type:String, trim:true, default: 'São Carlos'}, 
     departamentoTurma: {type:String, trim:true},
     codDisciplina: {type:String, trim:true},
@@ -24,13 +23,24 @@ const turmaSchema = new Schema({
     tipoQuadro: {type:String, enum: ['Verde', 'Branco', 'Indiferente'], default: 'Indiferente'}
 })
 
-// === IMPORTANTE ===
-// Este índice permite turmas com mesmo nome/horário se o CAMPUS for diferente.
-turmaSchema.index({campus: 1, turma:1, nomeDisciplina:1, diaDaSemana:1, horarioInicio:1, ano:1, semestre:1, user:1},{ unique:true})
+// MUDANÇA CRÍTICA: O índice DEVE incluir 'ano' e 'semestre' para permitir histórico
+// Exemplo: Turma A de Cálculo pode existir em 2023/1 E em 2025/1.
+// Se ano/semestre não estiverem no índice unique, o banco acha que é duplicado.
+turmaSchema.index({
+    campus: 1, 
+    turma: 1, 
+    nomeDisciplina: 1, 
+    diaDaSemana: 1, 
+    horarioInicio: 1, 
+    ano: 1,        // <--- Essencial
+    semestre: 1,   // <--- Essencial
+    user: 1
+}, { unique: true })
 
-turmaSchema.index({ano:1,semestre:1,user:1})
+// Índice simples para buscas rápidas
+turmaSchema.index({ano:1, semestre:1, user:1})
 
-const Turma = mongoose.model('Turma',turmaSchema)
+const Turma = mongoose.model('Turma', turmaSchema)
 
 Turma.on('index', function(err) {
     if (err) {

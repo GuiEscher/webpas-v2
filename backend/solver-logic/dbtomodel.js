@@ -6,21 +6,66 @@ let Config = require('../models/config.model')
 // Função auxiliar para normalizar strings (trim aspas e espaços)
 const normalizarString = (str) => {
     if (!str) return '';
-    return String(str).trim().replace(/^['"]|['"]$/g, '');  // Remove aspas simples/duplas no início/fim
+    return String(str).trim().replace(/^['"]|['"]$/g, '');
 };
 
-// Função para formatar horário config para HHMM (sem :) – CORRIGIDA com padding zero
+// Função para formatar horário config para HHMM (sem :)
 const formatarHorarioParaDB = (horario) => {
     if (!horario) return '';
-    let formatted = String(horario).replace(':', '');  // Remove :, resulta em "800" ou "0800"
-    if (formatted.length === 3) {  // Se 3 dígitos (ex: 800), adiciona zero à esquerda
-        formatted = '0' + formatted;  // "0800"
+    let formatted = String(horario).replace(':', '');
+    if (formatted.length === 3) {
+        formatted = '0' + formatted;
     }
     return formatted;
 };
 
+// --- GERA VARIAÇÕES DE TOLERÂNCIA DE HORÁRIO ---
+const gerarJanelaHorario = (horarioBase) => {
+    if (!horarioBase) return [];
+    
+    // Garante base 4 dígitos para consultar o mapa
+    let base4 = horarioBase;
+    if (base4.length === 3) base4 = '0' + base4;
+
+    const variacoes = [base4]; 
+    
+    const mapaVariacoes = {
+        // MANHÃ (08:00 - 12:00)
+        '0800': ['0700', '0710', '0730', '0740', '0745', '0750', '0800', '0810', '0815', '0820', '0830'], 
+        '1000': ['0900', '0910', '0930', '0940', '0950', '1000', '1010', '1020', '1030'], 
+        '1200': ['1100', '1110', '1130', '1140', '1150', '1200', '1210', '1220', '1230', '1300'],
+        
+        // TARDE (14:00 - 18:00)
+        '1400': ['1300', '1310', '1330', '1340', '1350', '1400', '1410', '1420', '1430'],
+        '1600': ['1500', '1510', '1530', '1540', '1550', '1600', '1610', '1620', '1630'],
+        '1800': ['1700', '1710', '1730', '1740', '1750', '1800', '1810', '1820', '1830'],
+
+        // NOITE (19:00 - 23:00)
+        '1900': ['1830', '1840', '1850', '1900', '1910', '1915', '1920', '1930'],
+        '2100': ['2030', '2040', '2050', '2100', '2110', '2120', '2130'],
+        '2300': ['2230', '2240', '2250', '2300', '2310', '2320']
+    };
+
+    let listaBase = [];
+    if (mapaVariacoes[base4]) {
+        listaBase = [...new Set([...variacoes, ...mapaVariacoes[base4]])];
+    } else {
+        listaBase = variacoes;
+    }
+
+    // === CORREÇÃO PARA 3 DÍGITOS (800 vs 0800) ===
+    const listaExpandida = [];
+    listaBase.forEach(h => {
+        listaExpandida.push(h); // Adiciona "0800"
+        if (h.startsWith('0')) {
+            listaExpandida.push(h.substring(1)); // Adiciona "800"
+        }
+    });
+
+    return [...new Set(listaExpandida)];
+};
+
 async function dbtomodel(ano, semestre, periodo, diaDaSemana, user, predioAux, minAlunos) {
-    // Log inicial apenas com params essenciais (reduzido para evitar repetição)
     console.log(`[dbtomodel] ${periodo}/${diaDaSemana}: Iniciando (turmas >=${minAlunos}, aux=${predioAux})`);
 
     let modelo = {
@@ -33,80 +78,130 @@ async function dbtomodel(ano, semestre, periodo, diaDaSemana, user, predioAux, m
 
     const config = await Config.find({ user: user._id });
     if (config.length === 0) {
-        console.error(`[dbtomodel] ${periodo}/${diaDaSemana}: Nenhuma config encontrada para user ${user._id} — abortando.`);
-        return modelo; // Retorna vazio
+        console.error(`[dbtomodel] Sem config para user ${user._id}`);
+        return modelo;
     }
 
-    // Formate horários da config para matchar DB (HHMM sem :)
-    let horarioInicioF1 = formatarHorarioParaDB(config[0].horarios[periodo]['Início'].slot1);
-    let horarioFimF1 = formatarHorarioParaDB(config[0].horarios[periodo]['Fim'].slot1);
-    let horarioInicioF12 = formatarHorarioParaDB(config[0].horarios[periodo]['Início'].slot1);
-    let horarioFimF12 = formatarHorarioParaDB(config[0].horarios[periodo]['Fim'].slot2);
-    let horarioInicioF2 = formatarHorarioParaDB(config[0].horarios[periodo]['Início'].slot2);
-    let horarioFimF2 = formatarHorarioParaDB(config[0].horarios[periodo]['Fim'].slot2);
+    // 1. Definição de Horários Padrão
+    let hInicioF1 = formatarHorarioParaDB(config[0].horarios[periodo]['Início'].slot1);
+    let hFimF1    = formatarHorarioParaDB(config[0].horarios[periodo]['Fim'].slot1);
+    
+    let hInicioF12 = formatarHorarioParaDB(config[0].horarios[periodo]['Início'].slot1);
+    let hFimF12    = formatarHorarioParaDB(config[0].horarios[periodo]['Fim'].slot2);
+    
+    let hInicioF2 = formatarHorarioParaDB(config[0].horarios[periodo]['Início'].slot2);
+    let hFimF2    = formatarHorarioParaDB(config[0].horarios[periodo]['Fim'].slot2);
 
-    // Normalize param dia
+    // 2. Listas Flexíveis (Com correção 800/0800)
+    const listaInicioF1 = gerarJanelaHorario(hInicioF1);
+    const listaFimF1    = gerarJanelaHorario(hFimF1);
+
+    const listaInicioF12 = gerarJanelaHorario(hInicioF12);
+    const listaFimF12    = gerarJanelaHorario(hFimF12);
+
+    const listaInicioF2 = gerarJanelaHorario(hInicioF2);
+    const listaFimF2    = gerarJanelaHorario(hFimF2);
+
     const diaNormalizado = normalizarString(diaDaSemana);
-    // $in para cobrir aspas no DB (ex: ['Segunda', "'Segunda'"])
     const opcoesDia = [diaNormalizado, `'${diaNormalizado}'`];
 
-    // Log de horários e dia apenas uma vez por unit (útil para debug)
-    console.log(`[dbtomodel] ${periodo}/${diaDaSemana}: Horários: F1=${horarioInicioF1}-${horarioFimF1}, F12=${horarioInicioF12}-${horarioFimF12}, F2=${horarioInicioF2}-${horarioFimF2} | Dia opções: ${JSON.stringify(opcoesDia)}`);
-
-    // Queries com $in para diaDaSemana (flexível para aspas no DB) — log reduzido, só counts + 1 ex
-    modelo.turmasf1 = await Turma.find({
-        ano: ano,
-        semestre: semestre,
-        diaDaSemana: { $in: opcoesDia },
-        horarioInicio: horarioInicioF1,
-        horarioFim: horarioFimF1,
-        user: user._id,
-        totalTurma: { $gte: minAlunos }
+    // 3. Buscas no Banco (Usando $in para encontrar 800 E 0800)
+    // --- CORREÇÃO: Filtra turmas alocadas pela chefia E com créditos > 0 ---
+    
+    let rawTurmasF1 = await Turma.find({
+        ano: ano, semestre: semestre, diaDaSemana: { $in: opcoesDia },
+        horarioInicio: { $in: listaInicioF1 },
+        horarioFim: { $in: listaFimF1 },
+        user: user._id, 
+        totalTurma: { $gte: minAlunos },
+        alocadoChefia: { $ne: true },
+        creditosAula: { $gt: 0 } // Ignora se créditos forem 0
     });
-    const exF1 = modelo.turmasf1[0]?.idTurma || 'N/A';
-    console.log(`[dbtomodel] ${periodo}/${diaDaSemana}: F1: ${modelo.turmasf1.length} turmas (ex: ${exF1})`);
 
-    modelo.turmasf12 = await Turma.find({
-        ano: ano,
-        semestre: semestre,
-        diaDaSemana: { $in: opcoesDia },
-        horarioInicio: horarioInicioF12,
-        horarioFim: horarioFimF12,
-        user: user._id,
-        totalTurma: { $gte: minAlunos }
+    let rawTurmasF12 = await Turma.find({
+        ano: ano, semestre: semestre, diaDaSemana: { $in: opcoesDia },
+        horarioInicio: { $in: listaInicioF12 },
+        horarioFim: { $in: listaFimF12 },
+        user: user._id, 
+        totalTurma: { $gte: minAlunos },
+        alocadoChefia: { $ne: true },
+        creditosAula: { $gt: 0 } // Ignora se créditos forem 0
     });
-    const exF12 = modelo.turmasf12[0]?.idTurma || 'N/A';
-    console.log(`[dbtomodel] ${periodo}/${diaDaSemana}: F12: ${modelo.turmasf12.length} turmas (ex: ${exF12})`);
 
-    modelo.turmasf2 = await Turma.find({
-        ano: ano,
-        semestre: semestre,
-        diaDaSemana: { $in: opcoesDia },
-        horarioInicio: horarioInicioF2,
-        horarioFim: horarioFimF2,
-        user: user._id,
-        totalTurma: { $gte: minAlunos }
+    let rawTurmasF2 = await Turma.find({
+        ano: ano, semestre: semestre, diaDaSemana: { $in: opcoesDia },
+        horarioInicio: { $in: listaInicioF2 },
+        horarioFim: { $in: listaFimF2 },
+        user: user._id, 
+        totalTurma: { $gte: minAlunos },
+        alocadoChefia: { $ne: true },
+        creditosAula: { $gt: 0 } // Ignora se créditos forem 0
     });
-    const exF2 = modelo.turmasf2[0]?.idTurma || 'N/A';
-    console.log(`[dbtomodel] ${periodo}/${diaDaSemana}: F2: ${modelo.turmasf2.length} turmas (ex: ${exF2})`);
+
+    // ==========================================================================
+    // LÓGICA DE JUNÇÃO (STITCHING)
+    // ==========================================================================
+    
+    const turmasF1_Final = [];
+    const turmasF2_Final = [];
+    const matchedF2Ids = new Set();
+
+    const isSameClass = (t1, t2) => {
+        return t1.codDisciplina === t2.codDisciplina &&
+               t1.turma === t2.turma &&
+               t1.docentes === t2.docentes;
+    };
+
+    // Itera sobre o primeiro horário
+    rawTurmasF1.forEach(t1 => {
+        // Procura a continuação no segundo horário
+        const t2 = rawTurmasF2.find(t2 => 
+            !matchedF2Ids.has(t2._id.toString()) && isSameClass(t1, t2)
+        );
+
+        if (t2) {
+            // ENCONTROU A MESMA TURMA NO SEGUNDO HORÁRIO
+            // Unifica em F12 (Horário Cheio)
+            modelo.turmasf12.push(t1);
+            matchedF2Ids.add(t2._id.toString());
+            console.log(`[dbtomodel] 🔗 Turma Unificada: ${t1.nomeDisciplina} (${t1.turma})`);
+        } else {
+            // Mantém isolada
+            turmasF1_Final.push(t1);
+        }
+    });
+
+    // Adiciona as turmas do segundo horário que sobraram
+    rawTurmasF2.forEach(t2 => {
+        if (!matchedF2Ids.has(t2._id.toString())) {
+            turmasF2_Final.push(t2);
+        }
+    });
+
+    // Atualiza o modelo
+    modelo.turmasf1 = turmasF1_Final;
+    modelo.turmasf2 = turmasF2_Final;
+    rawTurmasF12.forEach(t => modelo.turmasf12.push(t));
 
     const totalTurmas = modelo.turmasf1.length + modelo.turmasf12.length + modelo.turmasf2.length;
-    if (totalTurmas === 0) {
-        console.warn(`[dbtomodel] ${periodo}/${diaDaSemana}: AVISO: 0 turmas qualificadas! Verifique horários/minAlunos.`);
-    } else {
-        console.log(`[dbtomodel] ${periodo}/${diaDaSemana}: Total turmas: ${totalTurmas}`);
-    }
+    console.log(`[dbtomodel] Total final: ${totalTurmas} (F1: ${modelo.turmasf1.length}, F12: ${modelo.turmasf12.length}, F2: ${modelo.turmasf2.length})`);
 
+    // ==========================================================================
 
+    // 4. Salas
     const salasDB = await Sala.find({ user: user._id });
     salasDB.forEach(sala => {
         let dispArray = sala.disponibilidade || [];
+        let disponivel = false;
         dispArray.forEach(disp => {
             const dispDiaNormalizado = normalizarString(disp.dia);
             if (dispDiaNormalizado === diaNormalizado && disp.periodo === periodo && disp.disponivel === true) {
-                modelo.salas.push(sala);
+                disponivel = true;
             }
         });
+        if (disponivel) {
+            modelo.salas.push(sala);
+        }
     });
 
     if (predioAux) {
@@ -122,7 +217,7 @@ async function dbtomodel(ano, semestre, periodo, diaDaSemana, user, predioAux, m
         }
     }
 
-    // Distancias: Normalize predio/dept
+    // 5. Distâncias
     const distanciasDb = await Distancia.find({ user: user._id });
     modelo.distancias = distanciasDb.reduce((acc, cur) => {
         const predioNorm = normalizarString(cur.predio);
@@ -131,31 +226,22 @@ async function dbtomodel(ano, semestre, periodo, diaDaSemana, user, predioAux, m
         acc[predioNorm][deptNorm] = cur.valorDist;
         return acc;
     }, {});
-    if (predioAux) {
-    modelo.distancias.predioAux = {};  // Começa vazio, mas preencha com neutro
-    
-    // CORREÇÃO MELHORADA: Defina distâncias neutras para predioAux (0 = "próximo de todos")
-    // Primeiro, tenta depts das turmas atuais (dinâmico)
-    const todasTurmas = [...modelo.turmasf1, ...modelo.turmasf12, ...modelo.turmasf2];
-    let deptsUnicos = [...new Set(todasTurmas.map(turma => normalizarString(
-        (turma.departamentoOferta || turma.departamentoTurma || '')  // Prioriza dept da turma
-    )))].filter(dept => dept);  // Remove vazios
-    
-    // FALLBACK: Se deptsUnicos vazio (turmas sem dept), use TODOS depts do DB de distancias
-    if (deptsUnicos.length === 0) {
-        deptsUnicos = [...new Set(distanciasDb.map(cur => normalizarString(cur.departamento)))].filter(dept => dept);
-        console.warn(`[dbtomodel] Depts das turmas vazios! Usando fallback: ${deptsUnicos.length} depts totais.`);
-    }
-    
-    deptsUnicos.forEach(dept => {
-        modelo.distancias.predioAux[dept] = 0;  // Neutro: 0 (baixo custo); ou 50 para penalidade leve
-    });
-    
-    console.log(`[dbtomodel] Distâncias para predioAux preenchidas: ${deptsUnicos.length} depts com valor 0 (de turmas: ${todasTurmas.length}).`);
-}
 
-    // Resumo final (útil, mantém para cada unit)
-    console.log(`[dbtomodel] ${periodo}/${diaDaSemana}: RESUMO - Turmas=${totalTurmas}, Salas=${modelo.salas.length}, Distancias=${Object.keys(modelo.distancias).length} prédios`);
+    if (predioAux) {
+        modelo.distancias.predioAux = {};
+        const todasTurmas = [...modelo.turmasf1, ...modelo.turmasf12, ...modelo.turmasf2];
+        let deptsUnicos = [...new Set(todasTurmas.map(turma => normalizarString(
+            (turma.departamentoOferta || turma.departamentoTurma || '')
+        )))].filter(dept => dept);
+        
+        if (deptsUnicos.length === 0) {
+            deptsUnicos = [...new Set(distanciasDb.map(cur => normalizarString(cur.departamento)))].filter(dept => dept);
+        }
+        
+        deptsUnicos.forEach(dept => {
+            modelo.distancias.predioAux[dept] = 0;
+        });
+    }
 
     return modelo;
 }

@@ -13,7 +13,7 @@ const inicialValues ={
     idTurma: '',
     nomeDisciplina: '',
     turma : '',
-    campus :'São Carlos', // Valor padrão inicial
+    campus :'São Carlos', 
     departamentoOferta: '',
     departamentoTurma : '',
     codDisciplina : '',
@@ -25,7 +25,7 @@ const inicialValues ={
     docentes: '',
     ano: new Date().getFullYear(),
     semestre: 1,
-    tipoQuadro: 'Indiferente' // Valor padrão
+    tipoQuadro: 'Indiferente'
 }
 
 const formCssClass ={
@@ -49,12 +49,9 @@ const TurmaForm = props =>{
         if(turmaEdit != null){
             setValues({
                 ...turmaEdit,
-                // Garante que se vier do banco antigo (sem campo), assume Indiferente
                 tipoQuadro: turmaEdit.tipoQuadro || 'Indiferente',
                 campus: turmaEdit.campus || 'São Carlos'
             })
-        }else{
-
         }
     },[turmaEdit])
 
@@ -67,7 +64,6 @@ const TurmaForm = props =>{
         resetForm,
     }=useForm(inicialValues)
 
-    // Handler específico para o Toggle de Campus
     const handleCampusToggle = (event, newCampus) => {
         if(newCampus !== null) {
             setValues({ ...values, campus: newCampus });
@@ -93,17 +89,13 @@ const TurmaForm = props =>{
             }
         }
 
-        setErros({
-            ...temp
-        })
-
+        setErros({ ...temp })
         return Object.values(temp).every(errorValues => errorValues == "")
     }
 
     const handleSubmit = e =>{
         e.preventDefault()
         if (validate()){
-            // Se for São Carlos, forçamos o quadro a ser Indiferente para limpar sujeira de dados caso tenha trocado
             const payload = { ...values };
             if (payload.campus === 'São Carlos') {
                 payload.tipoQuadro = 'Indiferente';
@@ -121,24 +113,16 @@ const TurmaForm = props =>{
     return (
         <>
         <Box component="form"  onSubmit={handleSubmit}>
-            <Grid container
-                columns={12}
-                spacing={2}
-                sx = {formCssClass} 
-                justifyContent="space-between"
-                alignItems="flex-start">
+            <Grid container columns={12} spacing={2} sx = {formCssClass} justifyContent="space-between" alignItems="flex-start">
                 <Grid item xs={11}>
                     <Typography variant="h5">{formTitle}</Typography>
                     <Typography variant="caption" mb={1}>Campos com * são obrigatórios</Typography>
                 </Grid>
                 <Grid item xs={1}>
-                    <IconButton onClick={closeModalForm} >
-                        <CloseIcon />
-                    </IconButton>
+                    <IconButton onClick={closeModalForm} > <CloseIcon /> </IconButton>
                 </Grid>
                 <Grid item xs={12}><Divider/></Grid> 
                 
-                {/* --- MUDANÇA: SELETOR DE CAMPUS EM DESTAQUE --- */}
                 <Grid item xs={12} sm={6}>
                     <FormControl fullWidth>
                         <FormLabel sx={{mb:1}}>Campus</FormLabel>
@@ -156,7 +140,6 @@ const TurmaForm = props =>{
                     </FormControl>
                 </Grid>
 
-                {/* --- MUDANÇA: RENDERIZAÇÃO CONDICIONAL DO QUADRO --- */}
                 {values.campus === 'Sorocaba' && (
                      <Grid item xs={12} sm={6}>
                         <FormControl component="fieldset" fullWidth sx={{border: '1px solid #ccc', borderRadius: 1, p: 1}}>
@@ -178,150 +161,50 @@ const TurmaForm = props =>{
                 )}
 
                 <Grid item xs={12} sm={6}>
-                    <TextField 
-                        variant="outlined"
-                        label="idTurma"
-                        name = "idTurma"
-                        onChange={handleInputChange}
-                        value ={values.idTurma}></TextField>
+                    <TextField variant="outlined" label="idTurma" name = "idTurma" onChange={handleInputChange} value ={values.idTurma}></TextField>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                    <TextField
-                        variant="outlined"
-                        label="Nome da Disciplina*"
-                        name = "nomeDisciplina"
-                        onChange={handleInputChange}
-                        value ={values.nomeDisciplina}
-                        {...(erros.nomeDisciplina != null && erros.nomeDisciplina != "" && {
-                            error:true,
-                            helperText:erros.nomeDisciplina 
-                        })}
-                    />
+                    <TextField variant="outlined" label="Nome da Disciplina*" name = "nomeDisciplina" onChange={handleInputChange} value ={values.nomeDisciplina} {...(erros.nomeDisciplina != null && erros.nomeDisciplina != "" && { error:true, helperText:erros.nomeDisciplina })} />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                    <TextField 
-                        variant="outlined"
-                        label="Turma*"
-                        name = "turma"
-                        onChange={handleInputChange}
-                        value ={values.turma}
-                        {...(erros.turma != "" && erros.turma != null && {
-                            error:true,
-                            helperText:erros.turma
-                        })}
-                    />
-                </Grid>
-                
-                {/* Removi o campo antigo de Campus texto manual pois agora temos o Toggle acima */}
-                
-                <Grid item xs={12} sm={6}>
-                    <TextField 
-                        variant="outlined"
-                        name = "departamentoOferta"
-                        onChange={handleInputChange}
-                        label="Departamento de Oferta*"
-                        value ={values.departamentoOferta}
-                        {...(erros.departamentoOferta != "" && erros.departamentoOferta!= null && {
-                            error:true,
-                            helperText:erros.departamentoOferta 
-                        })}
-                    />
+                    <TextField variant="outlined" label="Turma*" name = "turma" onChange={handleInputChange} value ={values.turma} {...(erros.turma != "" && erros.turma != null && { error:true, helperText:erros.turma })} />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                    <TextField 
-                        variant="outlined"
-                        name = "departamentoTurma"
-                        onChange={handleInputChange}
-                        label="Departamento Recomendado"
-                        value ={values.departamentoTurma}></TextField>
+                    <TextField variant="outlined" name = "departamentoOferta" onChange={handleInputChange} label="Departamento de Oferta*" value ={values.departamentoOferta} {...(erros.departamentoOferta != "" && erros.departamentoOferta!= null && { error:true, helperText:erros.departamentoOferta })} />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                    <TextField 
-                        variant="outlined"
-                        name = "codDisciplina"
-                        onChange={handleInputChange}
-                        label="Código da Disciplina" // Corrigi typo 'Disciplinas' para 'Disciplina'
-                        value ={values.codDisciplina}></TextField>
+                    <TextField variant="outlined" name = "departamentoTurma" onChange={handleInputChange} label="Departamento Recomendado" value ={values.departamentoTurma}></TextField>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                    <TextField 
-                        variant="outlined"
-                        name = "totalTurma"
-                        onChange={handleInputChange}
-                        label="Número de Alunos*"
-                        value ={values.totalTurma}
-                        {...(erros.totalTurma!= "" && erros.totalTurma != null && {
-                            error:true,
-                            helperText:erros.totalTurma 
-                        })}
-                    />
+                    <TextField variant="outlined" name = "codDisciplina" onChange={handleInputChange} label="Código da Disciplina" value ={values.codDisciplina}></TextField>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                    <Select 
-                        name="diaDaSemana"
-                        label="Dia*"
-                        value={values.diaDaSemana}
-                        onChange={handleInputChange}
-                        options ={dias}
-                        error={erros.diaDaSemana}
-                    />
+                    <TextField variant="outlined" name = "totalTurma" onChange={handleInputChange} label="Número de Alunos*" value ={values.totalTurma} {...(erros.totalTurma!= "" && erros.totalTurma != null && { error:true, helperText:erros.totalTurma })} />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                    <Select 
-                        name="horarioInicio"
-                        label="Horário de Início*"
-                        value={values.horarioInicio}
-                        onChange={handleInputChange}
-                        options ={horariosInicio}
-                        error={erros.horarioInicio}
-                    />
+                    <Select name="diaDaSemana" label="Dia*" value={values.diaDaSemana} onChange={handleInputChange} options ={dias} error={erros.diaDaSemana} />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                    <Select 
-                        name="horarioFim"
-                        label="Horário de Término*"
-                        value={values.horarioFim}
-                        onChange={handleInputChange}
-                        options ={horariosFim}
-                        error={erros.horarioFim}
-                    />
+                    <Select name="horarioInicio" label="Horário de Início*" value={values.horarioInicio} onChange={handleInputChange} options ={horariosInicio} error={erros.horarioInicio} />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                    <TextField 
-                        variant="outlined"
-                        name = "creditosAula"
-                        onChange={handleInputChange}
-                        label="Créditos"
-                        value ={values.creditosAula}></TextField>
+                    <Select name="horarioFim" label="Horário de Término*" value={values.horarioFim} onChange={handleInputChange} options ={horariosFim} error={erros.horarioFim} />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                    <TextField 
-                        variant="outlined"
-                        name = "docentes"
-                        onChange={handleInputChange}
-                        label="Docentes"
-                        value ={values.docentes}></TextField>
+                    <TextField variant="outlined" name = "creditosAula" onChange={handleInputChange} label="Créditos" value ={values.creditosAula}></TextField>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                    <Select 
-                        name="ano"
-                        label="Ano*"
-                        value={values.ano}
-                        onChange={handleInputChange}
-                        options ={anos}
-                        error={erros.ano}
-                    />
+                    <TextField variant="outlined" name = "docentes" onChange={handleInputChange} label="Docentes" value ={values.docentes}></TextField>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                    <Select name="ano" label="Ano*" value={values.ano} onChange={handleInputChange} options ={anos} error={erros.ano} />
                 </Grid>
                 <Grid item xs={12} >
                     <FormControl>
                         <FormLabel>Semestre*</FormLabel>
-                        <RadioGroup row
-                        name="semestre"
-                        value={values.semestre}
-                        onChange={handleInputChange}>
+                        <RadioGroup row name="semestre" value={values.semestre} onChange={handleInputChange}>
                             <FormControlLabel value={1} control={<Radio />} label="1º Semestre" />
                             <FormControlLabel value={2} control={<Radio />} label="2º Semestre" />
-                        
                         </RadioGroup>
                     </FormControl>
                 </Grid>

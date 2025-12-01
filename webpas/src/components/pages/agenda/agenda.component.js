@@ -89,11 +89,14 @@ const Agenda = props =>{
     const [horario,setHorario] = useState(0);
     const [openTrocaSalaForm,setOpenTrocaSalaForm] = useState(false);
     const [openExportarForm,setOpenExportarForm] = useState(false);
-    const [openDeleteDialog,setOpenDeleteDialog] = useState(false); // Novo: Diálogo de confirmação para delete
     const [tabValue, setTabValue] = useState(0);
     const [formatoAgenda,setFormatoAgenda] = useState('colunas');
     const [anchorEl, setAnchorEl] = React.useState(null);
     const [filterFn,setFilterFn] = useState({fn:items=>{return items;},fnAgenda:items=>{return items;}})
+    
+    // --- NOVO ESTADO PARA O FILTRO DE CAMPUS ---
+    const [viewCampus, setViewCampus] = useState('São Carlos');
+
     const [state,setState] = React.useState({
         capacidade:false,
         idTurma:false,
@@ -124,7 +127,7 @@ const Agenda = props =>{
 
     useEffect(()=>{
         retornaAlocacoes()
-    },[resultados,formatoAgenda,dia])
+    },[resultados,formatoAgenda,dia, viewCampus])
 
     useEffect(()=>{
         retornaHorariosInicio()
@@ -140,38 +143,40 @@ const Agenda = props =>{
         getPeriodoByHorario(horario)
     },[horario])
 
+    // --- HANDLER PARA TROCA DE CAMPUS ---
+    const handleViewCampusChange = (event, newView) => {
+        if (newView !== null) {
+            setViewCampus(newView);
+        }
+    };
+
     const retornaResultados = (ano,semestre) =>{
-        console.log(`Buscando resultados para ${ano}/${semestre}...`); // Log para depuração
+        console.log(`Buscando resultados para ${ano}/${semestre}...`); 
         ResultadosDataService.getByAnoSemestre(ano, semestre)
-    .then(res => {
-        console.log("Resultados recebidos:", res.data);
-        setResultados(res.data || []);  // Guarda vazia
-        if (res.data.length === 0) console.warn("Nenhum resultado encontrado — verifique execução do solver ou auth.");
-    })
-    .catch(err => {
-        console.error("Erro ao buscar resultados:", err.response?.status, err.response?.data || err.message);
-        if (err.response?.status === 401) alert("Sessão expirada — faça login novamente.");
-        setResultados([]);
-    });
+        .then(res => {
+            setResultados(res.data || []); 
+        })
+        .catch(err => {
+            console.error("Erro ao buscar resultados:", err);
+            if (err.response?.status === 401) logout(); 
+            setResultados([]);
+        });
     }
     
-    // Botão de atualização manual
     const handleRefresh = () => {
         retornaResultados(ano, semestre);
     }
 
-    // Novo: Função para apagar resultados
     const handleDeleteResults = () => {
         if (window.confirm(`Tem certeza que deseja apagar TODOS os resultados para ${ano}/${semestre}? Isso é irreversível!`)) {
             ResultadosDataService.deleteByAnoSemestre(ano, semestre)
                 .then(res => {
-                    console.log("Resultados apagados:", res.data);
                     alert("Resultados apagados com sucesso!");
-                    setResultados([]);  // Limpa localmente
+                    setResultados([]);  
                 })
                 .catch(err => {
                     console.error("Erro ao apagar resultados:", err);
-                    alert("Erro ao apagar: " + (err.response?.data?.message || err.message));
+                    alert("Erro ao apagar.");
                 });
         }
     };
@@ -184,14 +189,29 @@ const Agenda = props =>{
             resultadosDoDia.forEach(resultado => {
                 if (resultado.alocacoes) {
                     resultado.alocacoes.forEach(alocacao => {
-                        let alocacaoTemp = {
-                            horario: alocacao?.horarioSlot === 1 
-                                ? getHorarioByPeriodo(resultado.periodo, 1) 
-                                : getHorarioByPeriodo(resultado.periodo, 2),
-                            turma: alocacao?.turma,
-                            sala: alocacao?.sala 
-                        };
-                        alocacoesTemp.push(alocacaoTemp);
+                        
+                        // --- FILTRO LÓGICO DO CAMPUS ---
+                        const campusTurma = alocacao.turma?.campus || 'São Carlos';
+                        
+                        if (campusTurma === viewCampus) {
+                            
+                            // === AJUSTE VISUAL: predioAux vira 'N/A' ===
+                            let salaDisplay = alocacao?.sala;
+                            if (salaDisplay && salaDisplay.predio === 'predioAux') {
+                                // Cria uma cópia para não alterar o objeto original se for usado em outro lugar
+                                salaDisplay = { ...salaDisplay, predio: 'N/A' };
+                            }
+                            // ============================================
+
+                            let alocacaoTemp = {
+                                horario: alocacao?.horarioSlot === 1 
+                                    ? getHorarioByPeriodo(resultado.periodo, 1) 
+                                    : getHorarioByPeriodo(resultado.periodo, 2),
+                                turma: alocacao?.turma,
+                                sala: salaDisplay  // Usa a sala com nome ajustado
+                            };
+                            alocacoesTemp.push(alocacaoTemp);
+                        }
                     });
                 }
             });
@@ -242,7 +262,7 @@ const Agenda = props =>{
     }
 
     const getHorarioByPeriodo = (periodo,slot) =>{
-        if (!horariosInicio || horariosInicio.length === 0) return ''; // Guarda de segurança
+        if (!horariosInicio || horariosInicio.length === 0) return '';
 
         let periodoNum= 0
         if (periodo === 'Manhã'){
@@ -253,7 +273,7 @@ const Agenda = props =>{
             periodoNum = 2
         }
         const index = periodoNum * 2 + slot - 1;
-        return horariosInicio[index] || ''; // Retorna string vazia se o índice for inválido
+        return horariosInicio[index] || ''; 
     }
 
     const retornaHorariosInicio = () =>{
@@ -341,8 +361,9 @@ const Agenda = props =>{
                         <Grid item xs ={3} sx={{fontSize:'14px',fontWeight:'500',color:"#666"}}>Editar</Grid>
                         <Grid item xs ={3} sx={{fontSize:'14px',fontWeight:'500',color:"#666"}}>Exportar</Grid>
                         <Grid item xs ={3} sx={{fontSize:'14px',fontWeight:'500',color:"#666"}}>Ações</Grid>
-                        <Grid item xs ={9} sx={{fontSize:'14px',fontWeight:'500',color:"#666"}}>Buscar</Grid>
-                        <Grid item xs ={12} sx={{fontSize:'14px',fontWeight:'500',color:"#666"}}>Mostrar</Grid>
+                        <Grid item xs ={4} sx={{fontSize:'14px',fontWeight:'500',color:"#666"}}>Campus</Grid>
+                        <Grid item xs ={8} sx={{fontSize:'14px',fontWeight:'500',color:"#666"}}>Buscar</Grid>
+                        <Grid item xs ={9} sx={{fontSize:'14px',fontWeight:'500',color:"#666"}}>Mostrar</Grid>
                         <Grid item xs ={1} sx={{fontSize:'14px',fontWeight:'500',color:"#666"}}>Ajuda</Grid>
                         
                         <Grid item xs={6} sm={3}>
@@ -352,21 +373,33 @@ const Agenda = props =>{
                             <Button startIcon={<FileDownloadTwoToneIcon/>} variant="contained" onClick={handleOpenExportar} sx={{fontSize:'12px',paddingTop:'13px',paddingBottom:'12px'}} >Baixar</Button>
                         </Grid>
                         <Grid item xs={6} sm={3}>
-                            <Button startIcon={<DeleteIcon/>} onClick={handleDeleteResults} variant="outlined" color="error" sx={{fontSize:'12px',paddingTop:'13px',paddingBottom:'12px'}} >Apagar Resultados</Button>
+                            <Button startIcon={<DeleteIcon/>} onClick={handleDeleteResults} variant="outlined" color="error" sx={{fontSize:'12px',paddingTop:'13px',paddingBottom:'12px'}} >Limpar</Button>
                         </Grid>
-                        <Grid item xs={6} sm={3}>
-                            <Button startIcon={<CachedTwoToneIcon/>} onClick={handleRefresh} variant="outlined" sx={{fontSize:'12px',paddingTop:'13px',paddingBottom:'12px'}} >Atualizar</Button>
+                        
+                        {/* SELETOR DE CAMPUS */}
+                        <Grid item xs={24} sm={4} sx={{display:'flex', justifyContent:'center'}}>
+                            <ToggleButtonGroup
+                                color="primary"
+                                value={viewCampus}
+                                exclusive
+                                onChange={handleViewCampusChange}
+                                size="small"
+                            >
+                                <ToggleButton value="São Carlos" sx={{fontSize: '0.7rem', px:1}}>SC</ToggleButton>
+                                <ToggleButton value="Sorocaba" sx={{fontSize: '0.7rem', px:1}}>SO</ToggleButton>
+                            </ToggleButtonGroup>
                         </Grid>
-                        <Grid item xs ={6} sm={9}>
+
+                        <Grid item xs ={6} sm={8}>
                             <TextField sx={inputCss} onChange={handleSearch} variant="outlined" InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon/></InputAdornment> }} />
                         </Grid>
-                        <Grid item xs={6} sm={3}>
+                        <Grid item xs={6} sm={2}>
                             <Select label="Ano" value={ano} onChange={handleAnoSelect} options={anos} style={selectCss}/> 
                         </Grid>
-                        <Grid item xs={6} sm={3}>
+                        <Grid item xs={6} sm={2}>
                             <Select label="Semestre" value={semestre} onChange={handleSemestreSelect} options={[1,2]} style={selectCss}/>
                         </Grid>
-                        <Grid item xs={6} sm={3}>
+                        <Grid item xs={6} sm={2}>
                             <Button onClick={handleClickCampos} startIcon={<PlaylistAddTwoToneIcon/>} variant="contained" sx={{fontSize:'12px',paddingTop:'13px',paddingBottom:'12px'}} >Campos</Button>
                             <Popover id={idCampos} open={camposOpen} anchorEl={anchorEl} onClose={handleCloseCampos} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}>
                                 <AgendaCampos state={state} setState={setState}/>
@@ -396,6 +429,7 @@ const Agenda = props =>{
             </Paper>
             <TableContainer sx={{top:'-5px',position:"relative"}} component={Paper}>
                 <Box>
+                    {/* Passando viewCampus para os componentes filhos caso eles precisem (opcional, já filtramos em alocacoes) */}
                     {formatoAgenda === 'colunas' ? (
                         <AgendaColunas state={state} horariosInicio={horariosInicio} filterFn={filterFn} alocacoes={alocacoes}/>
                     ) : ( 

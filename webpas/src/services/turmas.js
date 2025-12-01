@@ -1,6 +1,4 @@
-// services/turmas.js
-
-import http from "../http-commom";
+import http from "../http-commom"; // Verifique se é http-common ou http-commom no seu projeto
 
 class TurmasDataService {
     getAll(){
@@ -23,18 +21,11 @@ class TurmasDataService {
         return http.post('turmas/arquivoturma',novasTurmas)
     }
  
-    // --- NOVO MÉTODO ADICIONADO ---
     uploadCSV(formData) {
-        // A requisição POST para o novo endpoint de CSV.
-        // O header 'Content-Type': 'multipart/form-data' é crucial para o envio de arquivos
-        // e é adicionado automaticamente pelo navegador ao usar FormData.
         return http.post("/turmas/upload-csv", formData, {
-            headers: {
-                "Content-Type": "multipart/form-data",
-            },
+            headers: { "Content-Type": "multipart/form-data" },
         });
     }
-    // --- FIM DO NOVO MÉTODO ---
 
     updateTurma(turmaId,turma){
         return http.post(`turmas/update/${turmaId}`,turma)
@@ -46,6 +37,16 @@ class TurmasDataService {
 
     deleteAnoSemestre(ano,semestre){
         return http.delete(`turmas/delete/${ano}/${semestre}`)
+    }
+
+    // --- NOVOS MÉTODOS PARA GERENCIAMENTO DE PERÍODOS ---
+    getSemestresDisponiveis() {
+        return http.get("/turmas/info/semestres-disponiveis");
+    }
+
+    deletePeriodos(data) {
+        // data = { periodos: [{ano: 2023, semestre: 1}, ...] }
+        return http.post("/turmas/delete-periodos", data);
     }
 }
 

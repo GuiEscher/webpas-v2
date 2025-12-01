@@ -13,7 +13,7 @@ const User = require('./models/user.model'); // Ajuste se necessário (ex: user.
 
 // Configurações
 const MONGODB_URI = process.env.ATLAS_URI; // Agora carrega do .env (sem fallback local)
-const USER_EMAIL = 'guilhermeescher@estudante.ufscar.br'; // SUBSTITUA pelo email real do user
+const USER_EMAIL = 'teste@gmail.com'; // SUBSTITUA pelo email real do user
 const JSON_PATH = path.join(__dirname, 'dados_completos_final.json'); // Seu JSON aqui
 
 async function loadFromJson() {

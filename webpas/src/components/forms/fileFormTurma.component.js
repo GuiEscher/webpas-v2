@@ -37,8 +37,6 @@ export default function FileFormTurma(props) {
 
     const [loading, setLoading] = useState(false);
     const [file, setFile] = useState(null);
-    
-    // NOVO ESTADO: Campus Padrão (São Carlos)
     const [campus, setCampus] = useState('São Carlos');
 
     const {
@@ -54,7 +52,6 @@ export default function FileFormTurma(props) {
         }
     };
     
-    // Handler para mudança de campus
     const handleCampusChange = (event, newCampus) => {
         if (newCampus !== null) {
             setCampus(newCampus);
@@ -74,7 +71,6 @@ export default function FileFormTurma(props) {
     formData.append('file', file);
     formData.append('ano', values.ano);
     formData.append('semestre', values.semestre);
-    // Enviando o campus escolhido
     formData.append('campusSelecionado', campus);
 
     try {
@@ -122,7 +118,6 @@ export default function FileFormTurma(props) {
                     <IconButton onClick={closeButton} disabled={loading}><CloseIcon /></IconButton>
                 </Grid>
 
-                {/* --- NOVO SELETOR DE CAMPUS --- */}
                 <Grid item xs={12} sx={{display:'flex', justifyContent:'center', my: 2}}>
                     <ToggleButtonGroup
                         color="primary"
@@ -136,7 +131,6 @@ export default function FileFormTurma(props) {
                         <ToggleButton value="Sorocaba">Sorocaba</ToggleButton>
                     </ToggleButtonGroup>
                 </Grid>
-                {/* ------------------------------- */}
 
                 <Grid item xs={12} mb={1}>
                     <label htmlFor='readCsvFile'>
