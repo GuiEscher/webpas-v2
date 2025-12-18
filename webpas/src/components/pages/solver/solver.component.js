@@ -1,24 +1,24 @@
-import React, {useState, useEffect} from "react";
+import React, { useState, useEffect } from "react";
 import PageHeader from "../../re-usable/page-header.component";
 import CalculateIcon from '@mui/icons-material/Calculate';
-import { Paper, Typography, Grid, Box } from "@mui/material";
+import {
+  Paper, Typography, Grid, Box, Alert, IconButton, Checkbox, CircularProgress,
+  Dialog, DialogContent, Button, FormControl, FormLabel, FormControlLabel,
+  TextField, FormGroup, Accordion, AccordionSummary, AccordionDetails, Divider
+} from "@mui/material";
 import Select from "../../forms/select.component";
-import DistanciasDataService from '../../../services/distancias'
+import DistanciasDataService from '../../../services/distancias';
 import TurmasDataService from '../../../services/turmas';
 import SalasDataService from '../../../services/salas';
-import { Alert } from "@mui/material";
-import { IconButton } from "@mui/material";
+import ResultadosDataService from "../../../services/resultados";
 import HelpIcon from '@mui/icons-material/Help';
 import DoneIcon from '@mui/icons-material/Done';
-import { Checkbox } from "@mui/material";
-import { CircularProgress } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
-import { Dialog, DialogContent } from "@mui/material";
-import AjudaSolver from '../help/ajuda-solver.component'
-import ResultadosDataService from "../../../services/resultados"
-import { Button, FormControl, FormLabel, FormControlLabel, TextField, FormGroup} from "@mui/material";
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
+import AjudaSolver from '../help/ajuda-solver.component';
 
-const thisYear = new Date().getFullYear()
+const thisYear = new Date().getFullYear();
 
 // Função para obter valores únicos de um array
 const arrayUnique = array => [...new Set(array)];
@@ -30,53 +30,52 @@ const normalizarDept = (dept) => {
 };
 
 const configTemp = {
-    dias: ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'],
-    periodos: ['Manhã','Tarde','Noite']
+    dias: ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'],
+    periodos: ['Manhã', 'Tarde', 'Noite']
 }
 
-const Solver = props =>{
-    const {config,user,logout} = props
+const Solver = props => {
+    const { config, user, logout } = props;
 
-    const [ano,setAno] = useState(thisYear);
-    const [anos,setAnos] = useState([]);
-    const [semestre,setSemestre] = useState(1);
-    
-    // CORREÇÃO: O estado 'temTodos' agora é controlado pela verificação local
-    const [temTodos,setTemTodos] = useState(true); // Começa como true e é verificado
+    const [ano, setAno] = useState(thisYear);
+    const [anos, setAnos] = useState([]);
+    const [semestre, setSemestre] = useState(1);
+    const [temTodos, setTemTodos] = useState(true);
 
-    const [selectAll,setSelectAll] = useState(false);
+    const [selectAll, setSelectAll] = useState(false);
     const [openHelp, setOpenHelp] = useState(false);
-    const [delta,setDelta] = useState(0);
-    const [minAlunos,setMinAlunos] = useState(1);
-    const [useAtx,setUseAtx] = useState(true);
-    const [tmLim,setTmLim] = useState(0);
-    const [mipGap,setMipGap] = useState(0);
-    const [erros,setErros] = useState({});
-    const [working,setWorking] = useState(false);
-    const [executado,setExecutado] = useState(false);
-    const [resultObj,setResultObj] = useState({});
-    const [dispCheckBoxList,setDispCheckBoxList] = useState(()=>{
+    
+    // --- VALORES PADRÃO (Conforme solicitado) ---
+    const [delta, setDelta] = useState(0);       // Folga
+    const [minAlunos, setMinAlunos] = useState(5); // Nro Min Alunos
+    const [useAtx, setUseAtx] = useState(true);  // Prédio Auxiliar
+    const [tmLim, setTmLim] = useState(60);      // Tempo Limite
+    const [mipGap, setMipGap] = useState(0.1);   // MIP Gap
+
+    const [erros, setErros] = useState({});
+    const [working, setWorking] = useState(false);
+    const [executado, setExecutado] = useState(false);
+    const [resultObj, setResultObj] = useState({});
+    
+    const [dispCheckBoxList, setDispCheckBoxList] = useState(() => {
         let result = {}
-        configTemp.dias.forEach(dia=>{
+        configTemp.dias.forEach(dia => {
             result[dia] = {}
-            configTemp.periodos.forEach(periodo=>{
+            configTemp.periodos.forEach(periodo => {
                 result[dia][periodo] = false
             })
         })
         return result
     })
 
-    useEffect(()=>{
+    useEffect(() => {
         if (user) {
             retornaAnos();
-            // Inicia a cadeia de busca de dados para a verificação
             retornaDadosParaVerificacao();
         }
     }, [user])
 
-    // --- LÓGICA DE VERIFICAÇÃO LOCAL (A MESMA DE DistanciasMatriz) ---
     const retornaDadosParaVerificacao = () => {
-        // Busca todas as 3 fontes de dados em paralelo para eficiência
         Promise.all([
             SalasDataService.getPredios(),
             TurmasDataService.getDepartamentos(),
@@ -86,14 +85,10 @@ const Solver = props =>{
             const deptsTurmasData = turmasRes.data || [];
             const distanciasData = distanciasRes.data || [];
 
-            // Normaliza os departamentos de ambas as fontes
             const deptsTurmasNormalizados = arrayUnique(deptsTurmasData.map(d => normalizarDept(d)));
             const deptsDistanciasNormalizados = arrayUnique(distanciasData.map(d => normalizarDept(d.departamento)));
-
-            // Une e ordena a lista final de todos os departamentos únicos
             const todosDepts = arrayUnique([...deptsTurmasNormalizados, ...deptsDistanciasNormalizados]).sort();
-            
-            // Cria um índice/mapa de distâncias existentes para busca rápida
+
             const indexDist = {};
             distanciasData.forEach(cur => {
                 const predioNormalizado = cur.predio.trim();
@@ -101,47 +96,42 @@ const Solver = props =>{
                 if (!indexDist[predioNormalizado]) indexDist[predioNormalizado] = {};
                 indexDist[predioNormalizado][deptNormalizado] = cur.valorDist;
             });
-            
-            // Verifica se cada par (predio, departamento) necessário existe no índice
+
             let todosPreenchidos = true;
             for (const predio of prediosData) {
                 for (const depto of todosDepts) {
                     if (indexDist[predio.trim()]?.[depto] === undefined) {
                         todosPreenchidos = false;
-                        break; // Para o loop interno se encontrar um faltando
+                        break;
                     }
                 }
-                if (!todosPreenchidos) break; // Para o loop externo também
+                if (!todosPreenchidos) break;
             }
-            
             setTemTodos(todosPreenchidos);
-
         }).catch(err => {
             console.error("Erro ao buscar dados para verificação:", err);
-            setTemTodos(false); // Assume que há erro se não conseguir buscar os dados
+            setTemTodos(false);
         });
     };
-    
-    // --- Funções do formulário ---
 
     const handleCloseHelp = () => setOpenHelp(false);
     const handleOpenHelp = () => setOpenHelp(true);
 
-    const retornaAnos = () =>{
+    const retornaAnos = () => {
         const anoAtual = new Date().getFullYear()
         const firstYear = anoAtual - 4
         let anos = []
-        for(let i=0;i<6;i++){
-            let anoA = firstYear + i
-            anos.push(anoA)
+        for (let i = 0; i < 6; i++) {
+            let anoA = firstYear + i;
+            anos.push(anoA);
         }
         setAnos(anos)
     }
 
-    const handleCheckBox = e =>{
-        const {name} = e.target
-        let dia = name.slice(0,name.search("-"))
-        let periodo = name.slice(name.search("-")+1)
+    const handleCheckBox = e => {
+        const { name } = e.target
+        let dia = name.slice(0, name.search("-"))
+        let periodo = name.slice(name.search("-") + 1)
         let changeCB = !dispCheckBoxList[dia][periodo]
         setDispCheckBoxList(prevState => ({
             ...prevState,
@@ -154,17 +144,20 @@ const Solver = props =>{
         setExecutado(false)
     }
 
-    const handleUseAtx = e =>{ setUseAtx(!useAtx); };
-    const handleMinAlunosChange = e =>{ setMinAlunos(e.target.value); };
+    const handleUseAtx = e => { setUseAtx(!useAtx); };
+    const handleMinAlunosChange = e => { setMinAlunos(e.target.value); };
     const handleTLChange = e => { setTmLim(e.target.value); };
-    const handleMipGapChange = e =>{ setMipGap(e.target.value); };
+    const handleMipGapChange = e => { setMipGap(e.target.value); };
+    const handleDeltaChange = e => { setDelta(e.target.value); setExecutado(false); };
+    const handleAnoSelect = e => { setAno(e.target.value); setExecutado(false); };
+    const handleSemestreSelect = e => { setSemestre(e.target.value); setExecutado(false); };
 
-    const handleSelectAll = e =>{
+    const handleSelectAll = e => {
         const newCheckedState = !selectAll;
         let result = {}
-        config.dias.forEach(dia=>{
+        config.dias.forEach(dia => {
             result[dia] = {}
-            config.periodos.forEach(periodo=>{
+            config.periodos.forEach(periodo => {
                 result[dia][periodo] = newCheckedState
             })
         })
@@ -173,53 +166,36 @@ const Solver = props =>{
         setExecutado(false)
     }
 
-    const criarLista = () =>{
+    const criarLista = () => {
         let lista = []
-        config.dias.forEach(dia=>{
-            config.periodos.forEach(periodo=>{
-                if (dispCheckBoxList[dia][periodo]){
+        config.dias.forEach(dia => {
+            config.periodos.forEach(periodo => {
+                if (dispCheckBoxList[dia][periodo]) {
                     lista.push({ dia: dia, periodo: periodo });
                 }
             })
         })
         return lista
     }
- 
-    const handleAnoSelect = e =>{ setAno(e.target.value); setExecutado(false); };
-    const handleDeltaChange = e =>{ setDelta(e.target.value); setExecutado(false); };
-    const handleSemestreSelect = e =>{ setSemestre(e.target.value); setExecutado(false); };
 
-    const validate = () =>{
+    const validate = () => {
         let validated = true
-        let tempErro = {} // Começa com objeto limpo
-        if (isNaN(delta) || delta === '') {
-            validated = false
-            tempErro.delta = "Deve ser um número";
-        }
-        if (isNaN(minAlunos) || minAlunos === '') {
-            validated = false
-            tempErro.minAlunos = "Deve ser um número";
-        }
-        if (isNaN(tmLim) || tmLim === '') {
-            validated = false
-            tempErro.tmLim = "Deve ser um número";
-        }
-        if (isNaN(mipGap) || mipGap === '') {
-            validated = false
-            tempErro.mipGap = "Deve ser um número";
-        }
+        let tempErro = {}
+        if (isNaN(delta) || delta === '') { validated = false; tempErro.delta = "Deve ser número"; }
+        if (isNaN(minAlunos) || minAlunos === '') { validated = false; tempErro.minAlunos = "Deve ser número"; }
+        if (isNaN(tmLim) || tmLim === '') { validated = false; tempErro.tmLim = "Deve ser número"; }
+        if (isNaN(mipGap) || mipGap === '') { validated = false; tempErro.mipGap = "Deve ser número"; }
         setErros(tempErro)
         return validated
     }
 
-    const handleExecute = () =>{
+    const handleExecute = () => {
         setExecutado(false);
-        if(validate() && temTodos){
+        if (validate() && temTodos) {
             setErros({})
             setWorking(true)
             const lista = criarLista()
 
-            // CORREÇÃO: Adicionados 'tmLim' e 'mipGap' ao objeto de dados
             let data = {
                 ano: ano,
                 semestre: semestre,
@@ -231,112 +207,198 @@ const Solver = props =>{
                 mipGap: mipGap
             }
 
-            console.log("Enviando para o solver:", data); // Log para depuração
+            console.log("Enviando para o solver:", data);
 
             ResultadosDataService.calculaLista(data)
-                .then(res=>{
+                .then(res => {
                     setWorking(false)
                     setExecutado(true)
                     setResultObj(res.data)
-                    console.log("Resultado recebido do solver:", res.data); // Log corrigido
                 })
-                .catch(err=>{
-                    console.error("Erro ao executar o solver:", err); // Log de erro
+                .catch(err => {
+                    console.error("Erro ao executar o solver:", err);
                     setWorking(false);
                 })
-        } else {
-            // Adicionado log para saber por que não executou
-            console.log("Execução bloqueada. Validação:", validate(), "Tem Todos:", temTodos);
         }
     }
 
     return (
         <>
-        <PageHeader
-            title="Resolver"
-            subtitle="Execução do modelo de otimização"
-            icon={<CalculateIcon/>}
-        />
-        <Dialog open={openHelp} onClose={handleCloseHelp}>
-            <DialogContent><AjudaSolver/></DialogContent>
-        </Dialog>
-        <Paper>
-            <Box padding={'30px'}>
+            <PageHeader
+                title="Resolver"
+                subtitle="Execução do modelo de otimização"
+                icon={<CalculateIcon />}
+            />
+            <Dialog open={openHelp} onClose={handleCloseHelp}>
+                <DialogContent><AjudaSolver /></DialogContent>
+            </Dialog>
+
+            <Paper sx={{ p: 4, mb: 4, borderRadius: 2 }}>
                 {!temTodos && (
-                    <Alert severity="error" sx={{marginY:'10px'}}>
-                        Existem distâncias entre prédios e departamentos 
-                        não informadas. A otimização só poderá ser executada com todas as distâncias cadastradas.
+                    <Alert severity="error" sx={{ mb: 3 }}>
+                        Existem distâncias entre prédios e departamentos não informadas. A otimização só poderá ser executada com todas as distâncias cadastradas.
                     </Alert>
                 )}
-                <Grid container alignItems="center" columns={20} spacing={2}>
-                    {/* Seções do formulário (sem alterações lógicas, apenas formatação) */}
-                    <Grid item xs={20}><Typography fontSize={'1.1rem'} fontWeight={'405'}> Escolher Ano e Semestre</Typography></Grid>
-                    <Grid item xs={3}><Select label="Ano" value={ano} onChange={handleAnoSelect} options={anos}/> </Grid>
-                    <Grid item xs={3} ><Select label="Semestre" value={semestre} onChange={handleSemestreSelect} options ={[1,2]}/></Grid>
-                    <Grid item xs={13}></Grid>
-                    <Grid item xs={1}><IconButton color="inherit" edge="start" onClick={handleOpenHelp}><HelpIcon /></IconButton></Grid>
-                    
-                    <Grid item xs={20} mt={2}><Typography fontSize={'1.1rem'} fontWeight={'405'}> Escolher dias e períodos</Typography></Grid>
-                    <Grid item xs={20}></Grid>
-                    <Grid item xs ={4}></Grid>
-                    {config.periodos.map((periodo,index)=>(<Grid item xs={4} key={index}><Typography fontWeight={450}>{periodo}</Typography></Grid>))}
-                    
-                    {config.dias.map((dia,index)=>(
-                        <Grid item xs ={20} key={index}>
-                            <FormControl  sx={{width:'100%'}}>
-                            <Grid container columnSpacing={3} alignItems="center"  justifyContent="flex-start">
-                                <Grid item xs={4}><FormLabel fontWeight={450}>{dia}</FormLabel></Grid>
-                                {config.periodos.map((periodo)=>(
-                                    <React.Fragment key={`${dia}-${periodo}`}>
-                                        <Grid item xs={1} alignContent="center"> 
-                                            <Checkbox name={`${dia}-${periodo}`} onChange={handleCheckBox} checked={dispCheckBoxList[dia] ? dispCheckBoxList[dia][periodo] : false} /> 
-                                        </Grid>
-                                        <Grid item xs={1}>
-                                            {working && dispCheckBoxList[dia]?.[periodo] ?(<CircularProgress size={16}/>
-                                            ): ( executado && dispCheckBoxList[dia]?.[periodo] ? (
-                                                    resultObj[dia]?.[periodo] ? <DoneIcon color="success"/> : <CloseIcon color="error" />
-                                                ) : <></>
-                                            )}
-                                        </Grid>
-                                        <Grid item xs={2}></Grid>
-                                    </React.Fragment>
-                                ))}
-                            </Grid>
-                            </FormControl>
-                        </Grid>
-                    ))}
-                    
-                    <Grid item xs={20}><FormControlLabel control={<Checkbox checked={selectAll} onChange={handleSelectAll}/>} label="Selecionar Todos" /></Grid>
-                    
-                    <Grid item xs={20} mt={2}><Typography fontSize={'1.1rem'} fontWeight={'405'}> Escolher folga e número de alunos mínimo</Typography></Grid>
-                    <Grid item xs={20}></Grid>
-                    <Grid item xs={3}>
-                        <TextField fullWidth variant="outlined" label="Folga*" name="delta" onChange={handleDeltaChange} value={delta} {...(erros.delta && { error:true, helperText:erros.delta })}/>
-                    </Grid>
-                    <Grid item xs={3}>
-                        <TextField fullWidth variant="outlined" label="Nro mínimo de alunos*" name="minAlunos" onChange={handleMinAlunosChange} value={minAlunos} {...(erros.minAlunos && { error:true, helperText:erros.minAlunos })} />
-                    </Grid>
-                    
-                    <Grid item xs={20} mt={2}><Typography fontSize={'1.1rem'} fontWeight={'405'}> Prédio auxiliar</Typography></Grid>
-                    <Grid item xs={20}><FormGroup><FormControlLabel control={<Checkbox checked={useAtx} onChange={handleUseAtx} />} label="Usar prédio auxiliar" /></FormGroup></Grid>
 
-                    <Grid item xs={20} mt={2}><Typography fontSize={'1.1rem'} fontWeight={'405'}> Opções do solver</Typography></Grid>
-                    <Grid item xs={20}></Grid>
-                    <Grid item xs={3}>
-                        <TextField fullWidth variant="outlined" label="Tempo máximo de execução (s)" name="tmLim" onChange={handleTLChange} value={tmLim} {...(erros.tmLim && { error:true, helperText:erros.tmLim })} />
+                {/* --- SEÇÃO 1: PERÍODO --- */}
+                <Typography variant="h6" gutterBottom color="primary.main" fontWeight="500">
+                    1. Período Letivo
+                </Typography>
+                <Grid container spacing={3} sx={{ mb: 4 }}>
+                    <Grid item xs={12} sm={6} md={3}>
+                        <Select label="Ano" value={ano} onChange={handleAnoSelect} options={anos} />
                     </Grid>
-                    <Grid item xs={3}>
-                        <TextField fullWidth variant="outlined" label="MIP gap" name="mipGap" onChange={handleMipGapChange} value={mipGap} {...(erros.mipGap && { error:true, helperText:erros.mipGap })} />
+                    <Grid item xs={12} sm={6} md={3}>
+                        <Select label="Semestre" value={semestre} onChange={handleSemestreSelect} options={[1, 2]} />
                     </Grid>
-
-                    <Grid item xs={20} mt={3}>
-                        <Button variant="contained" onClick={handleExecute} disabled={!temTodos || working}> 
-                            {working ? 'Executando...' : 'Executar'}
-                        </Button>
+                    <Grid item xs={12} md={6} display="flex" justifyContent="flex-end" alignItems="center">
+                        <Button startIcon={<HelpIcon />} onClick={handleOpenHelp} color="inherit">Ajuda</Button>
                     </Grid>
                 </Grid>
-            </Box>
-        </Paper>
+
+                <Divider sx={{ mb: 4 }} />
+
+                {/* --- SEÇÃO 2: SELEÇÃO DE DIAS E HORÁRIOS --- */}
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                    <Typography variant="h6" color="primary.main" fontWeight="500">
+                        2. Dias e Turnos para Alocação
+                    </Typography>
+                    <FormControlLabel 
+                        control={<Checkbox checked={selectAll} onChange={handleSelectAll} color="primary" />} 
+                        label={<Typography fontWeight="bold">Selecionar Todos</Typography>} 
+                    />
+                </Box>
+                
+                <Paper variant="outlined" sx={{ p: 2, mb: 4, bgcolor: '#fafafa' }}>
+                    <Grid container spacing={1}>
+                        <Grid item xs={3}></Grid> {/* Spacer para Labels */}
+                        {config.periodos.map((periodo, index) => (
+                            <Grid item xs={3} key={index} textAlign="center">
+                                <Typography variant="subtitle2" fontWeight="bold" color="textSecondary">{periodo}</Typography>
+                            </Grid>
+                        ))}
+
+                        {config.dias.map((dia, index) => (
+                            <React.Fragment key={dia}>
+                                <Grid item xs={3} display="flex" alignItems="center">
+                                    <Typography variant="body2" fontWeight="500">{dia}</Typography>
+                                </Grid>
+                                {config.periodos.map((periodo) => (
+                                    <Grid item xs={3} key={`${dia}-${periodo}`} textAlign="center" display="flex" justifyContent="center" alignItems="center">
+                                        <Checkbox
+                                            name={`${dia}-${periodo}`}
+                                            onChange={handleCheckBox}
+                                            checked={dispCheckBoxList[dia] ? dispCheckBoxList[dia][periodo] : false}
+                                            size="small"
+                                        />
+                                        <Box width={24} height={24} ml={1} display="flex" alignItems="center" justifyContent="center">
+                                            {working && dispCheckBoxList[dia]?.[periodo] ? (
+                                                <CircularProgress size={16} />
+                                            ) : (executado && dispCheckBoxList[dia]?.[periodo] ? (
+                                                resultObj[dia]?.[periodo] ? <DoneIcon color="success" fontSize="small" /> : <CloseIcon color="error" fontSize="small" />
+                                            ) : null)}
+                                        </Box>
+                                    </Grid>
+                                ))}
+                                <Grid item xs={12}><Divider light /></Grid>
+                            </React.Fragment>
+                        ))}
+                    </Grid>
+                </Paper>
+
+                {/* --- SEÇÃO 3: CONFIGURAÇÕES AVANÇADAS (Accordion) --- */}
+                <Accordion defaultExpanded={false} sx={{ mb: 4, border: '1px solid #e0e0e0', borderRadius: '4px !important', boxShadow: 'none' }}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: '#f5f5f5' }}>
+                        <Box display="flex" alignItems="center" gap={1}>
+                            <SettingsSuggestIcon color="action" />
+                            <Typography variant="subtitle1" fontWeight="500">Configurações Avançadas do Solver</Typography>
+                        </Box>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                        <Grid container spacing={3} sx={{ mt: 1 }}>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <TextField 
+                                    fullWidth 
+                                    size="small"
+                                    variant="outlined" 
+                                    label="Folga (Delta)" 
+                                    name="delta" 
+                                    onChange={handleDeltaChange} 
+                                    value={delta} 
+                                    helperText={erros.delta}
+                                    error={Boolean(erros.delta)}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <TextField 
+                                    fullWidth 
+                                    size="small"
+                                    variant="outlined" 
+                                    label="Mínimo de Alunos" 
+                                    name="minAlunos" 
+                                    onChange={handleMinAlunosChange} 
+                                    value={minAlunos} 
+                                    helperText={erros.minAlunos}
+                                    error={Boolean(erros.minAlunos)}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <TextField 
+                                    fullWidth 
+                                    size="small"
+                                    variant="outlined" 
+                                    label="Tempo Limite (s)" 
+                                    name="tmLim" 
+                                    onChange={handleTLChange} 
+                                    value={tmLim} 
+                                    helperText={erros.tmLim}
+                                    error={Boolean(erros.tmLim)}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <TextField 
+                                    fullWidth 
+                                    size="small"
+                                    variant="outlined" 
+                                    label="MIP Gap" 
+                                    name="mipGap" 
+                                    onChange={handleMipGapChange} 
+                                    value={mipGap} 
+                                    helperText={erros.mipGap}
+                                    error={Boolean(erros.mipGap)}
+                                />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <FormControl component="fieldset">
+                                    <FormLabel component="legend" sx={{ fontSize: '0.8rem' }}>Opções Extras</FormLabel>
+                                    <FormGroup>
+                                        <FormControlLabel 
+                                            control={<Checkbox checked={useAtx} onChange={handleUseAtx} size="small" />} 
+                                            label={<Typography variant="body2">Permitir uso de Prédio Auxiliar (se faltar sala)</Typography>} 
+                                        />
+                                    </FormGroup>
+                                </FormControl>
+                            </Grid>
+                        </Grid>
+                    </AccordionDetails>
+                </Accordion>
+
+                {/* --- BOTÃO DE AÇÃO --- */}
+                <Box display="flex" justifyContent="center">
+                    <Button 
+                        variant="contained" 
+                        color="secondary"
+                        size="large"
+                        onClick={handleExecute} 
+                        disabled={!temTodos || working}
+                        sx={{ px: 6, py: 1.5, fontSize: '1rem', fontWeight: 'bold' }}
+                        startIcon={working ? <CircularProgress size={20} color="inherit" /> : <CalculateIcon />}
+                    >
+                        {working ? 'Executando Otimização...' : 'Executar Alocação'}
+                    </Button>
+                </Box>
+
+            </Paper>
         </>
     )
 }

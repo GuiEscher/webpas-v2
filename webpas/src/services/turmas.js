@@ -1,5 +1,4 @@
-import http from "../http-commom"; // Verifique se é http-common ou http-commom no seu projeto
-
+import http from "../http-commom"; 
 class TurmasDataService {
     getAll(){
         return http.get('turmas')
