@@ -29,6 +29,12 @@ const turmaSchema = new Schema({
     enum: ["Verde", "Branco", "Indiferente"],
     default: "Indiferente",
   },
+  solicitacao: {
+    type: String,
+    enum: ["terreo", "prancheta", "qv", "qb", "lab", "esp-norte", "esp-sul"],
+    default: null,
+  },
+  departamentoOriginal: { type: String, trim: true },
 });
 
 // --- ÍNDICE COMPOSTO (A CORREÇÃO) ---

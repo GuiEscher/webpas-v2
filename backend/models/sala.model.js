@@ -12,8 +12,11 @@ const salaSchema = new Schema({
         periodo:{type:String,required:true},
         disponivel:{type:Boolean,required:true}
     }],
-    terreo:Boolean, 
-    acessivel:Boolean,
+    terreo: { type: Boolean, default: false },
+    acessivel: { type: Boolean, default: false },
+    prancheta: { type: Boolean, default: false },
+    laboratorio: { type: Boolean, default: false },
+    regiao: { type: String, enum: ['norte', 'sul', null], default: null },
     user:{type:mongoose.Types.ObjectId,ref:'User',required:true}
 })
 

@@ -16,7 +16,7 @@ import { Typography } from "@mui/material";
 import { IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ExcelExporter from "../../services/excel-exporter";
-import * as XLSX from "xlsx/xlsx.mjs";
+import * as XLSX from "xlsx-js-style";
 
 const inicialValues = {
   formato: 1,
@@ -284,10 +284,15 @@ const ExportarResultadoForm = (props) => {
     // Cores para cada dia da semana
     const coresDias = {
       Segunda: "ADD8E6", // Azul claro
+      "Segunda-feira": "ADD8E6",
       Terça: "FFB6C1", // Rosa claro
+      "Terça-feira": "FFB6C1",
       Quarta: "FFE4B5", // Amarelo claro
+      "Quarta-feira": "FFE4B5",
       Quinta: "D8BFD8", // Lilás
+      "Quinta-feira": "D8BFD8",
       Sexta: "B0E0E6", // Azul céu
+      "Sexta-feira": "B0E0E6",
       Sábado: "F0E68C", // Amarelo esverdeado
     };
 
@@ -301,22 +306,31 @@ const ExportarResultadoForm = (props) => {
     // Aplicar estilos aos headers de horários (linha 2)
     for (let c = 0; c < headerHorarios.length; c++) {
       let cellRef2 = XLSX.utils.encode_cell({ r: 1, c: c });
-      if (worksheet[cellRef2]) worksheet[cellRef2].s = headerHorarioStyle;
+      if (!worksheet[cellRef2]) worksheet[cellRef2] = { t: "s", v: "" };
+      worksheet[cellRef2].s = headerHorarioStyle;
     }
 
     // Aplicar cores aos dias da semana (linha 1) com cores diferentes
     colIndex = 3;
     dias.forEach((dia) => {
-      let cor = coresDias[dia] || "E8F4F8";
+      // Normalizar o nome do dia para match (pegar só a primeira palavra se tiver hífen)
+      let diaNormalizado = dia.split("-")[0];
+      let cor = coresDias[dia] || coresDias[diaNormalizado] || "E8F4F8";
+      
+      console.log(`Aplicando cor ${cor} para o dia: ${dia} (normalizado: ${diaNormalizado})`);
+      
       let diaStyle = {
         font: { bold: true, sz: 12 },
         alignment: { horizontal: "center", vertical: "center" },
         fill: { fgColor: { rgb: cor } },
       };
 
-      // Aplicar estilo à célula principal do dia
-      let cellRef = XLSX.utils.encode_cell({ r: 0, c: colIndex });
-      if (worksheet[cellRef]) worksheet[cellRef].s = diaStyle;
+      // Aplicar estilo em TODAS as células da área mesclada do dia
+      for (let c = colIndex; c < colIndex + horariosInicio.length; c++) {
+        let cellRef = XLSX.utils.encode_cell({ r: 0, c: c });
+        if (!worksheet[cellRef]) worksheet[cellRef] = { t: "s", v: "" };
+        worksheet[cellRef].s = diaStyle;
+      }
 
       colIndex += horariosInicio.length;
     });
@@ -330,7 +344,8 @@ const ExportarResultadoForm = (props) => {
     for (let r = 0; r < 2; r++) {
       for (let c = 0; c < 3; c++) {
         let cellRef = XLSX.utils.encode_cell({ r: r, c: c });
-        if (worksheet[cellRef]) worksheet[cellRef].s = fixoStyle;
+        if (!worksheet[cellRef]) worksheet[cellRef] = { t: 's', v: '' };
+        worksheet[cellRef].s = fixoStyle;
       }
     }
 

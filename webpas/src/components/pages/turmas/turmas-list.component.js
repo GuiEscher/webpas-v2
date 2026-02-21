@@ -31,6 +31,10 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  Menu,
+  MenuItem,
+  Chip,
+  Tooltip,
 } from "@mui/material";
 import HelpIcon from "@mui/icons-material/Help";
 import SaveIcon from "@mui/icons-material/Save";
@@ -42,11 +46,16 @@ import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
 import InputAdornment from "@mui/material/InputAdornment";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import AccessibleIcon from "@mui/icons-material/Accessible";
+import DeleteIcon from "@mui/icons-material/Delete";
 import Mensagem from "../../re-usable/mensagem.component";
 import ConfirmDialog from "../../re-usable/confirmDialog.component";
 import handleServerResponses from "../../../services/response-handler";
 import AjudaTurma from "../help/ajuda-turma.component";
 import ErrorIcon from "@mui/icons-material/Error";
+import SolicitacoesService, {
+  TIPOS_SOLICITACAO,
+} from "../../../services/solicitacoes";
 
 const tableRowCss = { "& .MuiTableCell-root": { padding: 1 } };
 const tableStyle = {
@@ -70,6 +79,7 @@ const headCells = [
   { id: "creditosAula", label: "Cred." },
   { id: "departamentoOferta", label: "Depto Oferta" },
   { id: "departamentoTurma", label: "Depto Rec." },
+  { id: "solicitacao", label: "Solicitação", disableSorting: true },
   { id: "docentes", label: "Docentes" },
   { id: "codDisciplina", label: "Cód. Disc." },
 ];
@@ -116,6 +126,11 @@ const TurmasList = (props) => {
   const [pendingChanges, setPendingChanges] = useState({});
   const [saving, setSaving] = useState(false);
 
+  // --- ESTADOS DO MENU DE CONTEXTO (SOLICITAÇÕES) ---
+  const [contextMenu, setContextMenu] = useState(null);
+  const [contextTurma, setContextTurma] = useState(null);
+  const [solicitacoesMap, setSolicitacoesMap] = useState({});
+
   useEffect(() => {
     retornaAnos();
   }, []);
@@ -125,7 +140,20 @@ const TurmasList = (props) => {
   useEffect(() => {
     setPendingChanges({});
     retornaTurmas(anoTable, semestreTable);
+    atualizaSolicitacoesMap();
   }, [anoTable, semestreTable, notify]);
+
+  const atualizaSolicitacoesMap = () => {
+    const solicitacoes = SolicitacoesService.getByAnoSemestre(
+      anoTable,
+      semestreTable,
+    );
+    const map = {};
+    solicitacoes.forEach((s) => {
+      map[s.turmaId] = s;
+    });
+    setSolicitacoesMap(map);
+  };
 
   const handleCloseModalForm = () => {
     setOpenModalForm(false);
@@ -137,6 +165,53 @@ const TurmasList = (props) => {
   const handleOpenHelp = () => setOpenHelp(true);
   const handleCloseErros = () => setOpenErros(false);
   const handleOpenErros = () => setOpenErros(true);
+
+  // --- LÓGICA DO MENU DE CONTEXTO (SOLICITAÇÕES) ---
+  const handleContextMenu = (event, turma) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setContextTurma(turma);
+    setContextMenu({ mouseX: event.clientX + 2, mouseY: event.clientY - 6 });
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenu(null);
+    setContextTurma(null);
+  };
+
+  const handleAddSolicitacao = (tipoId) => {
+    if (!contextTurma) return;
+    try {
+      SolicitacoesService.addSolicitacao(contextTurma, tipoId);
+      atualizaSolicitacoesMap();
+      const tipo = TIPOS_SOLICITACAO.find((t) => t.id === tipoId);
+      setNotify({
+        isOpen: true,
+        message: `Solicitação "${tipo.label}" adicionada para ${contextTurma.nomeDisciplina} (${contextTurma.turma}).`,
+        type: "success",
+      });
+    } catch (err) {
+      setNotify({
+        isOpen: true,
+        message: "Erro ao adicionar solicitação.",
+        type: "error",
+      });
+    }
+    handleCloseContextMenu();
+  };
+
+  const handleRemoveSolicitacaoContexto = () => {
+    if (!contextTurma) return;
+    SolicitacoesService.removeSolicitacao(contextTurma._id);
+    atualizaSolicitacoesMap();
+    setNotify({
+      isOpen: true,
+      message: `Solicitação removida de ${contextTurma.nomeDisciplina} (${contextTurma.turma}).`,
+      type: "info",
+    });
+    handleCloseContextMenu();
+  };
+  // -----------------------------------------------
 
   // --- LÓGICA DO DELETE MANAGER ---
   const handleOpenDeleteManager = () => {
@@ -756,12 +831,15 @@ const TurmasList = (props) => {
                     ...tableRowCss,
                     backgroundColor: pendingChanges[turma._id]
                       ? "#fffde7"
-                      : "inherit",
+                      : solicitacoesMap[turma._id]
+                        ? "#e8f5e9"
+                        : "inherit",
                   }}
                   selected={isItemSelected}
                   aria-checked={isItemSelected}
                   role="checkbox"
                   onClick={(event) => handleClick(event, turma._id)}
+                  onContextMenu={(event) => handleContextMenu(event, turma)}
                 >
                   <TableCell padding="checkbox">
                     <Checkbox
@@ -827,6 +905,27 @@ const TurmasList = (props) => {
                   <TableCell>{turma.creditosAula}</TableCell>
                   <TableCell>{turma.departamentoOferta}</TableCell>
                   <TableCell>{turma.departamentoTurma}</TableCell>
+                  <TableCell>
+                    {solicitacoesMap[turma._id] ? (
+                      <Tooltip
+                        title={`Solicitação: ${solicitacoesMap[turma._id].tipoSolicitacaoLabel} → ${solicitacoesMap[turma._id].departamentoFake}`}
+                      >
+                        <Chip
+                          icon={<AccessibleIcon sx={{ fontSize: 14 }} />}
+                          label={
+                            solicitacoesMap[turma._id].tipoSolicitacaoLabel
+                          }
+                          size="small"
+                          color="success"
+                          sx={{ fontSize: "0.6rem", height: 22 }}
+                        />
+                      </Tooltip>
+                    ) : (
+                      <Typography variant="caption" color="textSecondary">
+                        —
+                      </Typography>
+                    )}
+                  </TableCell>
                   <TableCell>{turma.docentes}</TableCell>
                   <TableCell>{turma.codDisciplina}</TableCell>
                 </TableRow>
@@ -836,6 +935,97 @@ const TurmasList = (props) => {
         </TblContainer>
         <TblPagination />
       </TableContainer>
+
+      {/* MENU DE CONTEXTO - SOLICITAÇÕES DE ACESSIBILIDADE */}
+      <Menu
+        open={contextMenu !== null}
+        onClose={handleCloseContextMenu}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          contextMenu !== null
+            ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+            : undefined
+        }
+      >
+        <MenuItem disabled sx={{ opacity: "1 !important", pb: 0 }}>
+          <Typography
+            variant="caption"
+            sx={{ fontWeight: 700, color: "text.primary" }}
+          >
+            <AccessibleIcon
+              sx={{ fontSize: 16, mr: 0.5, verticalAlign: "middle" }}
+            />
+            Solicitação de Acessibilidade
+          </Typography>
+        </MenuItem>
+        {contextTurma && (
+          <MenuItem disabled sx={{ opacity: "1 !important", pt: 0, pb: 1 }}>
+            <Typography
+              variant="caption"
+              color="textSecondary"
+              sx={{ fontSize: "0.7rem" }}
+            >
+              {contextTurma.nomeDisciplina} — {contextTurma.turma}
+            </Typography>
+          </MenuItem>
+        )}
+        <Divider />
+        {TIPOS_SOLICITACAO.map((tipo) => (
+          <MenuItem
+            key={tipo.id}
+            onClick={() => handleAddSolicitacao(tipo.id)}
+            sx={{ fontSize: "0.85rem" }}
+          >
+            <ListItemIcon>
+              <AccessibleIcon
+                fontSize="small"
+                sx={{
+                  color:
+                    tipo.id === "terreo"
+                      ? "#4caf50"
+                      : tipo.id === "prancheta"
+                        ? "#ff9800"
+                        : tipo.id === "qv"
+                          ? "#2e7d32"
+                          : tipo.id === "qb"
+                            ? "#1565c0"
+                            : tipo.id === "lab"
+                              ? "#7b1fa2"
+                              : tipo.id === "esp-norte"
+                                ? "#c62828"
+                                : "#00838f",
+                }}
+              />
+            </ListItemIcon>
+            <ListItemText
+              primary={tipo.label}
+              secondary={tipo.descricao}
+              primaryTypographyProps={{ fontSize: "0.85rem" }}
+              secondaryTypographyProps={{ fontSize: "0.65rem" }}
+            />
+          </MenuItem>
+        ))}
+        {contextTurma && solicitacoesMap[contextTurma._id] && (
+          <>
+            <Divider />
+            <MenuItem
+              onClick={handleRemoveSolicitacaoContexto}
+              sx={{ fontSize: "0.85rem", color: "error.main" }}
+            >
+              <ListItemIcon>
+                <DeleteIcon fontSize="small" color="error" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Remover Solicitação"
+                primaryTypographyProps={{
+                  fontSize: "0.85rem",
+                  color: "error.main",
+                }}
+              />
+            </MenuItem>
+          </>
+        )}
+      </Menu>
     </>
   );
 };

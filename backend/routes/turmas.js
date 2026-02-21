@@ -311,9 +311,18 @@ router.route("/d/").get(protect, (req, res) => {
   Turma.find({ user: user._id })
     .distinct("departamentoOferta")
     .then((departamentosOferta) => {
+      // DEBUG: Log raw department values from DB
+      console.log(
+        `[GET /d/] departamentoOferta raw:`,
+        departamentosOferta.slice(0, 20),
+      );
       Turma.find({ user: user._id })
         .distinct("departamentoTurma")
         .then((departamentosTurma) => {
+          console.log(
+            `[GET /d/] departamentoTurma raw:`,
+            departamentosTurma.slice(0, 20),
+          );
           const departamentos = arrayUnique(
             departamentosOferta.concat(departamentosTurma),
           );
@@ -440,8 +449,13 @@ router.route("/delete/:ano/:semestre").delete(protect, (req, res) => {
 });
 
 router.route("/update/:id").post(protect, (req, res) => {
+  console.log(
+    `[UPDATE TURMA] id=${req.params.id}, body=`,
+    JSON.stringify(req.body),
+  );
   Turma.findById(req.params.id)
     .then((turma) => {
+      const deptAntes = turma.departamentoTurma;
       Object.assign(turma, req.body);
       if (turma.horarioInicio)
         turma.horarioInicio = String(Number(turma.horarioInicio));
@@ -451,12 +465,147 @@ router.route("/update/:id").post(protect, (req, res) => {
       if (turma.codDisciplina && turma.turma)
         turma.idTurma = `${turma.codDisciplina}-${turma.turma}`;
 
+      console.log(
+        `[UPDATE TURMA] "${turma.nomeDisciplina}" dept: "${deptAntes}" → "${turma.departamentoTurma}"`,
+      );
       turma
         .save()
         .then(() => res.json("Turma atualizada"))
-        .catch((err) => res.status(400).json(err));
+        .catch((err) => {
+          console.error(`[UPDATE TURMA] Erro ao salvar:`, err);
+          res.status(400).json(err);
+        });
     })
     .catch((err) => res.status(400).json(err));
+});
+
+// --- ROTA DE LIMPEZA DE DEPARTAMENTOS FAKE ---
+// Encontra turmas com departamentos residuais (DEP-TERREO, TERREO-DEP-TERREO, etc.)
+// e restaura o departamento original.
+router.post("/limpar-departamentos-fake", protect, async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Prefixos usados pelo sistema de solicitações (atual e antigo)
+    const prefixosFake = [
+      "TERREO",
+      "PRANCHETA",
+      "QV",
+      "QB",
+      "LAB",
+      "NORTE",
+      "SUL",
+    ];
+
+    // Padrões antigos estáticos que nunca deveriam ser departamentos reais
+    const departamentosEstaticosAntigos = [
+      "DEP-TERREO",
+      "DEP-PRANCHETA",
+      "DEP-QV",
+      "DEP-QB",
+      "DEP-LAB",
+      "DEP-NORTE",
+      "DEP-SUL",
+    ];
+
+    // Monta regex que encontra: TERREO-xxx, PRANCHETA-xxx, DEP-TERREO, etc.
+    const regexParts = [];
+    prefixosFake.forEach((p) => {
+      regexParts.push(`^${p}-`); // ex: TERREO-DC, TERREO-DEP-TERREO
+    });
+    departamentosEstaticosAntigos.forEach((d) => {
+      regexParts.push(`^${d}$`); // ex: DEP-TERREO exato
+    });
+
+    const regex = new RegExp(regexParts.join("|"), "i");
+
+    // Busca turmas afetadas
+    const turmasAfetadas = await Turma.find({
+      user: userId,
+      $or: [
+        { departamentoTurma: { $regex: regex } },
+        { departamentoOferta: { $regex: regex } },
+      ],
+    });
+
+    if (turmasAfetadas.length === 0) {
+      return res.json({
+        msg: "Nenhum departamento fake encontrado. Tudo limpo!",
+        corrigidas: 0,
+      });
+    }
+
+    let corrigidas = 0;
+    const detalhes = [];
+
+    for (const turma of turmasAfetadas) {
+      let deptOriginal = null;
+
+      // 1. Se tem departamentoOriginal salvo, usar ele
+      if (turma.departamentoOriginal) {
+        deptOriginal = turma.departamentoOriginal;
+      } else {
+        // 2. Tentar extrair removendo o prefixo fake
+        const deptAtual = turma.departamentoTurma || "";
+        for (const prefixo of prefixosFake) {
+          if (deptAtual.toUpperCase().startsWith(prefixo + "-")) {
+            const restante = deptAtual.substring(prefixo.length + 1);
+            // Se o restante ainda é um dept fake antigo, extrair de novo
+            let limpo = restante;
+            for (const antigo of departamentosEstaticosAntigos) {
+              if (restante.toUpperCase() === antigo.toUpperCase()) {
+                // Caso TERREO-DEP-TERREO → não sabemos o dept real
+                // Usar departamentoOferta como fallback
+                limpo = turma.departamentoOferta || restante;
+                break;
+              }
+            }
+            deptOriginal = limpo;
+            break;
+          }
+        }
+
+        // 3. Se é um dept estático antigo puro (DEP-TERREO), usar departamentoOferta
+        if (!deptOriginal) {
+          for (const antigo of departamentosEstaticosAntigos) {
+            if (
+              (turma.departamentoTurma || "").toUpperCase() ===
+              antigo.toUpperCase()
+            ) {
+              deptOriginal = turma.departamentoOferta;
+              break;
+            }
+          }
+        }
+
+        // 4. Fallback final: usar departamentoOferta
+        if (!deptOriginal) {
+          deptOriginal = turma.departamentoOferta;
+        }
+      }
+
+      if (deptOriginal) {
+        const deptAnterior = turma.departamentoTurma;
+        turma.departamentoTurma = deptOriginal;
+        turma.solicitacao = undefined;
+        turma.departamentoOriginal = undefined;
+        await turma.save();
+        corrigidas++;
+        detalhes.push(
+          `${turma.nomeDisciplina} (${turma.turma}): ${deptAnterior} → ${deptOriginal}`,
+        );
+      }
+    }
+
+    res.json({
+      msg: `${corrigidas} turma(s) corrigida(s) com sucesso.`,
+      corrigidas,
+      detalhes,
+    });
+  } catch (error) {
+    console.error("Erro ao limpar departamentos fake:", error);
+    res.status(500).json({ msg: "Erro interno ao limpar departamentos fake." });
+  }
 });
 
 module.exports = router;

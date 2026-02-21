@@ -1,52 +1,56 @@
-import http from "../http-commom"; 
+import http from "../http-commom";
 class TurmasDataService {
-    getAll(){
-        return http.get('turmas')
-    }
+  getAll() {
+    return http.get("turmas");
+  }
 
-    getDepartamentos(){
-        return http.get('turmas/d/')
-    }
+  getDepartamentos() {
+    return http.get("turmas/d/");
+  }
 
-    getByAnoSemestre(ano,semestre){
-        return http.get(`turmas/${ano}/${semestre}`)
-    }
+  getByAnoSemestre(ano, semestre) {
+    return http.get(`turmas/${ano}/${semestre}`);
+  }
 
-    addTurma(turma){
-        return http.post('turmas/add',turma)
-    }
+  addTurma(turma) {
+    return http.post("turmas/add", turma);
+  }
 
-    addManyTurmas(novasTurmas){
-        return http.post('turmas/arquivoturma',novasTurmas)
-    }
- 
-    uploadCSV(formData) {
-        return http.post("/turmas/upload-csv", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-        });
-    }
+  addManyTurmas(novasTurmas) {
+    return http.post("turmas/arquivoturma", novasTurmas);
+  }
 
-    updateTurma(turmaId,turma){
-        return http.post(`turmas/update/${turmaId}`,turma)
-    }
+  uploadCSV(formData) {
+    return http.post("/turmas/upload-csv", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  }
 
-    deleteTurmas(turmas){
-        return http.post(`turmas/deleteMany`,turmas)
-    }
+  updateTurma(turmaId, turma) {
+    return http.post(`turmas/update/${turmaId}`, turma);
+  }
 
-    deleteAnoSemestre(ano,semestre){
-        return http.delete(`turmas/delete/${ano}/${semestre}`)
-    }
+  deleteTurmas(turmas) {
+    return http.post(`turmas/deleteMany`, turmas);
+  }
 
-    // --- NOVOS MÉTODOS PARA GERENCIAMENTO DE PERÍODOS ---
-    getSemestresDisponiveis() {
-        return http.get("/turmas/info/semestres-disponiveis");
-    }
+  deleteAnoSemestre(ano, semestre) {
+    return http.delete(`turmas/delete/${ano}/${semestre}`);
+  }
 
-    deletePeriodos(data) {
-        // data = { periodos: [{ano: 2023, semestre: 1}, ...] }
-        return http.post("/turmas/delete-periodos", data);
-    }
+  // --- NOVOS MÉTODOS PARA GERENCIAMENTO DE PERÍODOS ---
+  getSemestresDisponiveis() {
+    return http.get("/turmas/info/semestres-disponiveis");
+  }
+
+  deletePeriodos(data) {
+    // data = { periodos: [{ano: 2023, semestre: 1}, ...] }
+    return http.post("/turmas/delete-periodos", data);
+  }
+
+  limparDepartamentosFake() {
+    return http.post("/turmas/limpar-departamentos-fake");
+  }
 }
 
 export default new TurmasDataService();
