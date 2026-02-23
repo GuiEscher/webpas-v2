@@ -58,9 +58,8 @@ const headCells = [
   { id: "horarioInicio", label: "Início" },
   { id: "horarioFim", label: "Fim" },
   { id: "campus", label: "Campus" },
-  { id: "departamentoOriginal", label: "Depto Original" },
+  { id: "departamentoTurma", label: "Departamento" },
   { id: "tipoSolicitacaoLabel", label: "Solicitação" },
-  { id: "departamentoFake", label: "Depto Acessibilidade" },
 ];
 
 const thisYear = new Date().getFullYear();
@@ -522,7 +521,7 @@ const SolicitacoesList = (props) => {
                   <TableCell>{sol.horarioInicio}</TableCell>
                   <TableCell>{sol.horarioFim}</TableCell>
                   <TableCell>{sol.campus}</TableCell>
-                  <TableCell>{sol.departamentoOriginal}</TableCell>
+                  <TableCell>{sol.departamentoTurma}</TableCell>
                   <TableCell>
                     <Chip
                       label={sol.tipoSolicitacaoLabel}
@@ -535,14 +534,6 @@ const SolicitacoesList = (props) => {
                         fontSize: "0.65rem",
                       }}
                     />
-                  </TableCell>
-                  <TableCell>
-                    <Typography
-                      variant="caption"
-                      sx={{ fontWeight: 600, color: "primary.main" }}
-                    >
-                      {sol.departamentoFake}
-                    </Typography>
                   </TableCell>
                 </TableRow>
               );

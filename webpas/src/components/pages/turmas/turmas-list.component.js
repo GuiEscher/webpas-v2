@@ -908,7 +908,7 @@ const TurmasList = (props) => {
                   <TableCell>
                     {solicitacoesMap[turma._id] ? (
                       <Tooltip
-                        title={`Solicitação: ${solicitacoesMap[turma._id].tipoSolicitacaoLabel} → ${solicitacoesMap[turma._id].departamentoFake}`}
+                        title={`Solicitação: ${solicitacoesMap[turma._id].tipoSolicitacaoLabel}`}
                       >
                         <Chip
                           icon={<AccessibleIcon sx={{ fontSize: 14 }} />}

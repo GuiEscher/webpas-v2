@@ -23,10 +23,11 @@ const AjudaSolicitacoes = () => {
       <Alert severity="success" sx={{ mb: 2, fontSize: "0.85rem" }}>
         <b>Resumo rápido:</b> Solicitações servem para forçar o solver a alocar
         determinadas turmas em salas com características específicas (térreo,
-        prancheta, laboratório, etc.). O sistema troca o departamento da turma
-        por um departamento virtual (ex: <b>TERREO-DC</b>) e, na matriz de
-        distâncias, você configura distância <b>0</b> para os prédios adequados
-        e <b>999</b> para os demais.
+        prancheta, laboratório, etc.). Basta marcar a turma com o tipo de
+        solicitação desejado — o solver usará o <b>nome do prédio</b> (sufixos
+        como <b>(T)</b>, <b>.Pr</b>, <b>.Qv</b>, <b>.Qb</b>, <b>(LAB)</b>) para
+        aplicar penalidades automaticamente, sem necessidade de criar
+        departamentos virtuais ou configurar distâncias extras.
       </Alert>
 
       {/* ====== O QUE SÃO ====== */}
@@ -40,12 +41,11 @@ const AjudaSolicitacoes = () => {
         exatamente isso.
       </Typography>
       <Typography variant="body2" paragraph>
-        O mecanismo é simples: ao aplicar uma solicitação, o departamento da
-        turma é trocado temporariamente por um <b>departamento virtual</b> (ex:
-        turma do <b>DC</b> com solicitação de Térreo → departamento vira{" "}
-        <b>TERREO-DC</b>). Na página de Distâncias, esse departamento virtual é
-        configurado com distância <b>0</b> para prédios adequados e <b>999</b>{" "}
-        para os demais, fazendo o solver priorizar as salas corretas.
+        O mecanismo é automático: ao aplicar uma solicitação, o campo{" "}
+        <b>solicitação</b> da turma é marcado (ex: "terreo"). O solver então
+        verifica o <b>nome do prédio</b> de cada sala e aplica uma penalidade
+        alta para salas cujo prédio não possui o sufixo correspondente (ex:{" "}
+        <b>(T)</b> para térreo), forçando a alocação em salas adequadas.
       </Typography>
 
       <Divider sx={{ my: 2 }} />
@@ -93,68 +93,53 @@ const AjudaSolicitacoes = () => {
       </Box>
 
       <Typography variant="body2" paragraph>
-        <b>Térreo:</b> Alunos cadeirantes ou com mobilidade reduzida. Direciona
-        para prédios com salas no térreo (ex: AT02(T)).
+        <b>Térreo:</b> Alunos cadeirantes ou com mobilidade reduzida. Busca
+        prédios com sufixo <b>(T)</b> no nome (ex: AT02 (T), AT05 (T)).
       </Typography>
       <Typography variant="body2" paragraph>
-        <b>Prancheta:</b> Turmas que precisam de salas com pranchetas de desenho
-        (ex: AT05.Pr).
+        <b>Prancheta:</b> Turmas que precisam de salas com pranchetas de
+        desenho. Busca prédios com sufixo <b>.Pr</b> (ex: AT05.Pr, AT07.Pr).
       </Typography>
       <Typography variant="body2" paragraph>
-        <b>Quadro Verde / Quadro Branco:</b> Turmas que necessitam de um tipo
-        específico de quadro.
+        <b>Quadro Verde:</b> Busca prédios com sufixo <b>.Qv</b> (ex: AT05.Qv).
       </Typography>
       <Typography variant="body2" paragraph>
-        <b>Laboratório:</b> Turmas que precisam de laboratórios.
+        <b>Quadro Branco:</b> Busca prédios com sufixo <b>.Qb</b> (ex: AT05.Qb).
+      </Typography>
+      <Typography variant="body2" paragraph>
+        <b>Laboratório:</b> Turmas que precisam de laboratórios. Busca prédios
+        com sufixo <b>(LAB)</b> no nome.
       </Typography>
       <Typography variant="body2" paragraph>
         <b>Esp-Norte / Esp-Sul:</b> Direcionamento para espaços específicos no
-        campus.
+        campus. Usa o campo "região" da sala (norte/sul).
       </Typography>
 
       <Divider sx={{ my: 2 }} />
 
-      {/* ====== COMO O NOME É GERADO ====== */}
+      {/* ====== COMO FUNCIONA ====== */}
       <Typography variant="h6" gutterBottom>
-        Como o departamento virtual é gerado?
+        Como funciona?
       </Typography>
       <Typography variant="body2" paragraph>
-        O nome é formado pelo <b>prefixo do tipo</b> +{" "}
-        <b>departamento original</b> da turma. Isso garante nomes intuitivos —
-        você sabe imediatamente o que é e de qual departamento veio:
+        O solver verifica o <b>nome do prédio</b> de cada sala. Para cada turma
+        com solicitação, se o prédio da sala não possui o sufixo correspondente,
+        o solver aplica uma penalidade muito alta na distância, efetivamente
+        impedindo essa atribuição. Nenhuma configuração manual de distâncias é
+        necessária.
       </Typography>
-      <Box
-        component="ul"
-        sx={{ mb: 2, pl: 2, "& li": { fontSize: "0.85rem", mb: 0.5 } }}
-      >
-        <li>
-          Turma do <b>DC</b> + Térreo → <b>TERREO-DC</b>
-        </li>
-        <li>
-          Turma do <b>DC</b> + Prancheta → <b>PRANCHETA-DC</b>
-        </li>
-        <li>
-          Turma do <b>DFCM</b> + Quadro Verde → <b>QV-DFCM</b>
-        </li>
-        <li>
-          Turma do <b>DFCM</b> + Quadro Branco → <b>QB-DFCM</b>
-        </li>
-        <li>
-          Turma do <b>DC</b> + Laboratório → <b>LAB-DC</b>
-        </li>
-        <li>
-          Turma do <b>DC</b> + Esp-Norte → <b>NORTE-DC</b>
-        </li>
-        <li>
-          Turma do <b>DC</b> + Esp-Sul → <b>SUL-DC</b>
-        </li>
-      </Box>
+      <Typography variant="body2" paragraph>
+        <b>Pré-requisito:</b> Os prédios devem estar particionados com os
+        sufixos corretos no nome: <b>(T)</b> para térreo, <b>.Pr</b> para
+        prancheta, <b>.Qv</b> para quadro verde, <b>.Qb</b> para quadro branco,{" "}
+        <b>(LAB)</b> para laboratório.
+      </Typography>
 
       <Divider sx={{ my: 2 }} />
 
       {/* ====== PASSO A PASSO ====== */}
       <Typography variant="h6" gutterBottom>
-        Passo a passo completo
+        Passo a passo
       </Typography>
 
       <Alert
@@ -162,36 +147,30 @@ const AjudaSolicitacoes = () => {
         variant="outlined"
         sx={{ mb: 2, fontSize: "0.8rem" }}
       >
-        Os passos abaixo seguem a ordem correta. Siga na sequência para evitar
-        problemas com o solver.
+        O processo é simples — apenas 3 passos!
       </Alert>
 
       <Stepper orientation="vertical" sx={{ mb: 2 }}>
         <Step active>
           <StepLabel>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              1. Criar prédios particionados (Prédios e Salas)
+              1. Verificar partição dos prédios (Prédios &amp; Salas)
             </Typography>
           </StepLabel>
           <StepContent>
             <Typography variant="body2" paragraph>
-              Antes de tudo, é preciso que existam prédios separados para as
-              salas especiais. Exemplo: se o AT02 tem salas no térreo, crie o
-              prédio <b>AT02(T)</b> e cadastre nele <b>apenas</b> as salas do
-              térreo. O AT02 original fica com as salas dos andares superiores.
-            </Typography>
-            <Typography variant="body2" paragraph>
-              Para pranchetas, use o sufixo <b>.Pr</b> (ex: <b>AT05.Pr</b>).
-              Para laboratórios, use <b>(LAB)</b>. A ideia é: o solver só
-              consegue diferenciar se as salas estiverem em prédios separados.
+              Na página de <b>Prédios &amp; Salas</b>, verifique se os prédios
+              estão particionados com os sufixos corretos. Exemplo: AT05 deve
+              ter os prédios <b>AT05</b> (andares superiores), <b>AT05 (T)</b>{" "}
+              (térreo), <b>AT05.Pr</b> (prancheta), etc.
             </Typography>
             <Alert
               severity="warning"
               variant="outlined"
               sx={{ fontSize: "0.75rem" }}
             >
-              Se esse passo não for feito, o solver não terá como distinguir
-              salas no térreo de salas em andares superiores.
+              Se os prédios não estiverem particionados com os sufixos corretos,
+              o solver não conseguirá diferenciar as salas adequadas.
             </Alert>
           </StepContent>
         </Step>
@@ -218,61 +197,15 @@ const AjudaSolicitacoes = () => {
         <Step active>
           <StepLabel>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              3. Aplicar solicitações (esta página)
+              3. Aplicar solicitações e rodar o Solver
             </Typography>
           </StepLabel>
           <StepContent>
             <Typography variant="body2" paragraph>
-              Nesta página, clique em <b>"Aplicar Todas"</b>. O sistema vai
-              trocar o departamento de cada turma marcada para o departamento
-              virtual correspondente (ex: DC → TERREO-DC).
-            </Typography>
-            <Alert
-              severity="info"
-              variant="outlined"
-              sx={{ fontSize: "0.75rem" }}
-            >
-              Esse passo precisa ser feito <b>antes</b> de configurar as
-              distâncias, pois é aqui que os departamentos virtuais são criados.
-            </Alert>
-          </StepContent>
-        </Step>
-
-        <Step active>
-          <StepLabel>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              4. Configurar distâncias dos departamentos virtuais (Distâncias)
-            </Typography>
-          </StepLabel>
-          <StepContent>
-            <Typography variant="body2" paragraph>
-              Agora vá à página <b>Distâncias</b>. Os departamentos virtuais
-              (TERREO-DC, PRANCHETA-DC, etc.) já aparecerão na lista de
-              departamentos. Para cada um, configure:
-            </Typography>
-            <Box component="ul" sx={{ pl: 2, "& li": { fontSize: "0.8rem" } }}>
-              <li>
-                Distância <b>0</b> → prédios que atendem ao requisito (ex:
-                AT02(T) para térreo)
-              </li>
-              <li>
-                Distância <b>999</b> → prédios que NÃO atendem (penalidade)
-              </li>
-            </Box>
-          </StepContent>
-        </Step>
-
-        <Step active>
-          <StepLabel>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              5. Rodar o Solver
-            </Typography>
-          </StepLabel>
-          <StepContent>
-            <Typography variant="body2">
-              Rode o solver normalmente. Como as turmas com solicitação agora
-              têm distância 0 para prédios adequados e 999 para os demais, o
-              solver vai priorizar as salas corretas automaticamente.
+              Na página de <b>Solicitações</b>, clique em <b>"Aplicar Todas"</b>
+              . O sistema vai salvar a solicitação em cada turma marcada.
+              Depois, rode o solver normalmente — ele vai penalizar
+              automaticamente salas que não atendem aos requisitos.
             </Typography>
           </StepContent>
         </Step>
@@ -280,14 +213,14 @@ const AjudaSolicitacoes = () => {
         <Step active>
           <StepLabel>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              6. (Opcional) Reverter solicitações
+              4. (Opcional) Reverter solicitações
             </Typography>
           </StepLabel>
           <StepContent>
             <Typography variant="body2">
               Após verificar o resultado, clique em <b>"Reverter Todas"</b>
-              para restaurar os departamentos originais das turmas. Útil se
-              quiser rodar o solver novamente sem acessibilidade.
+              para remover as solicitações. Útil se quiser rodar o solver
+              novamente sem acessibilidade.
             </Typography>
           </StepContent>
         </Step>
@@ -297,7 +230,7 @@ const AjudaSolicitacoes = () => {
 
       {/* ====== EXEMPLO PRÁTICO ====== */}
       <Typography variant="h6" gutterBottom>
-        Exemplo prático completo
+        Exemplo prático
       </Typography>
       <Typography variant="body2" paragraph>
         <b>Cenário:</b> A turma "Introdução à Computação" do departamento DC tem
@@ -309,26 +242,19 @@ const AjudaSolicitacoes = () => {
         sx={{ pl: 2.5, "& li": { fontSize: "0.85rem", mb: 1 } }}
       >
         <li>
-          <b>Prédios:</b> Já temos AT02(T) com as salas do térreo e AT02 com os
-          andares superiores.
+          <b>Prédios:</b> Verifico que existe o prédio <b>AT02 (T)</b> com as
+          salas do térreo (separado do AT02 que tem os andares superiores).
         </li>
         <li>
           <b>Turmas:</b> Clico com o botão direito na turma → seleciono
           "Térreo".
         </li>
         <li>
-          <b>Solicitações:</b> Clico "Aplicar Todas" → o departamento da turma
-          muda de <b>DC</b> para <b>TERREO-DC</b>.
+          <b>Solicitações:</b> Clico "Aplicar Todas" → a solicitação é salva.
         </li>
         <li>
-          <b>Distâncias:</b> Configuro TERREO-DC com dist. <b>0</b> para
-          AT02(T), AT03(T) e dist. <b>999</b> para AT02, AT03.
-        </li>
-        <li>
-          <b>Solver:</b> Rodo o solver → a turma é alocada no AT02(T)!
-        </li>
-        <li>
-          <b>Resultado:</b> Confiro que funcionou e posso reverter se quiser.
+          <b>Solver:</b> Rodo o solver → a turma é alocada em uma sala do AT02
+          (T) (térreo)!
         </li>
       </Box>
 
@@ -340,27 +266,33 @@ const AjudaSolicitacoes = () => {
       </Typography>
 
       <Alert severity="warning" sx={{ mb: 1.5, fontSize: "0.8rem" }}>
-        <b>Ordem importa!</b> Primeiro aplique as solicitações (passo 3), depois
-        configure as distâncias (passo 4), e só então rode o solver. Se rodar o
-        solver sem configurar as distâncias, ele apontará distâncias faltantes.
+        <b>Prédios particionados são essenciais!</b> Certifique-se de que os
+        prédios estejam particionados com os sufixos corretos: <b>(T)</b>,{" "}
+        <b>.Pr</b>, <b>.Qv</b>, <b>.Qb</b>, <b>(LAB)</b>. Sem isso, o solver não
+        conseguirá diferenciar as salas.
       </Alert>
 
       <Alert severity="info" sx={{ mb: 1.5, fontSize: "0.8rem" }}>
-        <b>Departamento original preservado:</b> O sistema sempre guarda o
-        departamento original da turma. Você pode reverter a qualquer momento
-        para restaurá-lo.
+        <b>Sem departamentos virtuais!</b> Diferente da abordagem anterior, não
+        é mais necessário criar departamentos virtuais (TERREO-DC, etc.) nem
+        configurar distâncias para cada combinação.
       </Alert>
 
       <Alert severity="info" sx={{ mb: 1.5, fontSize: "0.8rem" }}>
-        <b>Múltiplas turmas do mesmo departamento?</b> Se duas turmas do DC têm
-        solicitação de Térreo, ambas usarão o mesmo departamento virtual
-        (TERREO-DC). Basta configurar as distâncias de TERREO-DC uma vez.
+        <b>Departamento preservado:</b> O departamento da turma não é alterado
+        ao aplicar uma solicitação. Apenas o campo "solicitação" é marcado.
+      </Alert>
+
+      <Alert severity="info" sx={{ mb: 1.5, fontSize: "0.8rem" }}>
+        <b>Distâncias dos prédios particionados:</b> Os prédios particionados
+        (ex: AT05 (T), AT05.Pr) precisam ter distâncias configuradas na matriz
+        de distâncias, assim como qualquer outro prédio.
       </Alert>
 
       <Alert severity="info" sx={{ fontSize: "0.8rem" }}>
-        <b>Turmas de departamentos diferentes?</b> Cada departamento gera seu
-        próprio departamento virtual (TERREO-DC, TERREO-DFCM, etc.). Configure
-        as distâncias de cada um separadamente na página de Distâncias.
+        <b>Limpeza de dados antigos:</b> Se você usou o sistema antigo com
+        departamentos virtuais, use o botão "Limpar Departamentos Fake" na
+        página de Distâncias para restaurar os departamentos originais.
       </Alert>
     </Box>
   );

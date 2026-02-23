@@ -330,13 +330,19 @@ const AjudaDistancias = () => {
 
       <Divider sx={{ my: 2 }} />
 
-      {/* ============ SEÇÃO 4: TABELA DE REFERÊNCIA ============ */}
+      {/* ============ SEÇÃO 4: SOLICITAÇÕES E ATRIBUTOS ============ */}
       <Typography variant="h6" gutterBottom>
-        Referência rápida: tipos de solicitação
+        Solicitações de acessibilidade
       </Typography>
       <Typography variant="body2" paragraph>
-        O departamento virtual é gerado como <b>PREFIXO-DEPARTAMENTO</b> (ex:
-        TERREO-DC, LAB-DFCM):
+        As solicitações de acessibilidade (térreo, prancheta, laboratório, etc.)
+        agora são tratadas <b>automaticamente pelo solver</b> usando o{" "}
+        <b>nome do prédio</b> da sala. O solver identifica os prédios
+        particionados pelos sufixos no nome (ex: <b>(T)</b>, <b>.Pr</b>,{" "}
+        <b>.Qv</b>, etc.) e aplica penalidades automaticamente.
+      </Typography>
+      <Typography variant="body2" paragraph>
+        Basta que os prédios estejam particionados com os sufixos corretos:
       </Typography>
 
       <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
@@ -344,16 +350,13 @@ const AjudaDistancias = () => {
           <TableHead>
             <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
               <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem" }}>
-                Tipo
+                Solicitação
               </TableCell>
               <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem" }}>
-                Sufixo no prédio
+                Sufixo / atributo usado
               </TableCell>
               <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem" }}>
-                Depto virtual (ex: DC)
-              </TableCell>
-              <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem" }}>
-                Como configurar
+                O que o solver faz
               </TableCell>
             </TableRow>
           </TableHead>
@@ -361,61 +364,58 @@ const AjudaDistancias = () => {
             {[
               {
                 tipo: "Térreo",
-                sufixo: "(T)",
-                dept: "TERREO-DC",
-                dica: "0 para prédios com (T), 999 demais",
+                atributo: "(T) no nome do prédio",
+                acao: "Penaliza prédios sem (T)",
               },
               {
                 tipo: "Prancheta",
-                sufixo: ".Pr",
-                dept: "PRANCHETA-DC",
-                dica: "0 para prédios com .Pr, 999 demais",
+                atributo: ".Pr no nome do prédio",
+                acao: "Penaliza prédios sem .Pr",
               },
               {
                 tipo: "Quadro Verde",
-                sufixo: "(QV)",
-                dept: "QV-DC",
-                dica: "0 para prédios com (QV), 999 demais",
+                atributo: ".Qv no nome do prédio",
+                acao: "Penaliza prédios sem .Qv",
               },
               {
                 tipo: "Quadro Branco",
-                sufixo: "(QB)",
-                dept: "QB-DC",
-                dica: "0 para prédios com (QB), 999 demais",
+                atributo: ".Qb no nome do prédio",
+                acao: "Penaliza prédios sem .Qb",
               },
               {
                 tipo: "Laboratório",
-                sufixo: "(LAB)",
-                dept: "LAB-DC",
-                dica: "0 para prédios com (LAB), 999 demais",
+                atributo: "(LAB) no nome do prédio",
+                acao: "Penaliza prédios sem (LAB)",
               },
               {
                 tipo: "Esp-Norte",
-                sufixo: "(N)",
-                dept: "NORTE-DC",
-                dica: "0 para prédios com (N), 999 demais",
+                atributo: "Região = Norte (campo da sala)",
+                acao: "Penaliza salas fora da região norte",
               },
               {
                 tipo: "Esp-Sul",
-                sufixo: "(S)",
-                dept: "SUL-DC",
-                dica: "0 para prédios com (S), 999 demais",
+                atributo: "Região = Sul (campo da sala)",
+                acao: "Penaliza salas fora da região sul",
               },
             ].map((row, i) => (
               <TableRow key={i}>
                 <TableCell sx={{ fontSize: "0.75rem" }}>{row.tipo}</TableCell>
-                <TableCell sx={{ fontSize: "0.75rem" }}>
-                  <code>{row.sufixo}</code>
-                </TableCell>
                 <TableCell sx={{ fontSize: "0.75rem", fontWeight: 600 }}>
-                  {row.dept}
+                  {row.atributo}
                 </TableCell>
-                <TableCell sx={{ fontSize: "0.75rem" }}>{row.dica}</TableCell>
+                <TableCell sx={{ fontSize: "0.75rem" }}>{row.acao}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Alert severity="info" sx={{ mb: 1.5, fontSize: "0.8rem" }}>
+        <b>Dados antigos (legado):</b> Se você usou o sistema antigo com
+        departamentos virtuais (TERREO-DC, etc.), use o botão "Limpar
+        Departamentos Fake" nesta página para restaurar os departamentos
+        originais das turmas.
+      </Alert>
 
       <Divider sx={{ my: 2 }} />
 
@@ -424,26 +424,22 @@ const AjudaDistancias = () => {
         Dicas importantes
       </Typography>
       <Alert severity="warning" sx={{ mb: 1.5, fontSize: "0.8rem" }}>
-        <b>Ordem dos passos:</b> Primeiro aplique as solicitações na página
-        Solicitações, depois configure distâncias aqui. Se configurar antes de
-        aplicar, os departamentos virtuais ainda não existirão.
+        <b>Prédios particionados:</b> Os prédios devem estar particionados com
+        os sufixos corretos no nome: <b>(T)</b> para térreo, <b>.Pr</b> para
+        prancheta, <b>.Qv</b> para quadro verde, <b>.Qb</b> para quadro branco,{" "}
+        <b>(LAB)</b> para laboratório. Cada prédio particionado precisa de
+        distâncias configuradas nesta matriz.
       </Alert>
       <Alert severity="info" sx={{ mb: 1.5, fontSize: "0.8rem" }}>
-        <b>Prédios particionados:</b> AT02 (andares superiores) e AT02(T)
-        (térreo) devem ser prédios <b>distintos</b> com salas distintas. Se
-        ficarem juntos, o solver não consegue diferenciar.
-      </Alert>
-      <Alert severity="info" sx={{ mb: 1.5, fontSize: "0.8rem" }}>
-        <b>Convenção de nomes nos prédios:</b> Use <code>(T)</code> para térreo,{" "}
-        <code>.Pr</code> para prancheta (ex: AT05.Pr), <code>(LAB)</code> para
-        laboratório, etc. Isso facilita identificar quais prédios recebem dist.
-        0 vs 999.
+        <b>Distâncias são para prédios × departamentos:</b> A matriz de
+        distâncias continua sendo usada para minimizar o deslocamento entre
+        departamentos e prédios. As solicitações adicionam penalidades
+        automaticamente quando o prédio não tem o sufixo correspondente.
       </Alert>
       <Alert severity="info" sx={{ fontSize: "0.8rem" }}>
-        <b>Múltiplos departamentos:</b> Se turmas do DC e do DFCM têm
-        solicitação de Térreo, serão criados TERREO-DC e TERREO-DFCM. Configure
-        as distâncias de cada um separadamente (ambos com 0 para prédios com
-        térreo e 999 para os demais).
+        <b>Exemplo:</b> Se AT05 (T) tem distância 3 para o DC, uma turma do DC
+        com solicitação de Térreo terá dist. 3 para AT05 (T) e penalidade máxima
+        para AT05 (sem sufixo).
       </Alert>
     </Box>
   );

@@ -2,11 +2,14 @@
  * Serviço de Solicitações de Acessibilidade
  *
  * Gerencia solicitações especiais para turmas (ex: térreo, prancheta, QV, QB, lab, etc.)
- * As solicitações alteram o departamento da turma para um "departamento fake",
- * que através da distância menor no solver, prioriza a alocação adequada.
+ *
+ * NOVA ABORDAGEM: Em vez de criar departamentos fake e distâncias para cada combinação,
+ * o campo 'solicitacao' da turma é setado diretamente (ex: 'terreo').
+ * O solver usa os ATRIBUTOS DAS SALAS (terreo, prancheta, laboratorio, etc.)
+ * para aplicar penalidades automaticamente, sem precisar de distâncias extras.
  *
  * Armazenamento local (localStorage) para que as solicitações persistam no navegador.
- * Ao aplicar, o departamentoTurma é alterado via API.
+ * Ao aplicar, o campo 'solicitacao' é salvo via API (departamento NÃO é alterado).
  */
 
 import TurmasDataService from "./turmas";
@@ -102,28 +105,14 @@ class SolicitacoesService {
       (s) => s.turmaId === turma._id,
     );
 
-    const departamentoOriginal = turma.solicitacao
-      ? existingIndex >= 0
-        ? solicitacoes[existingIndex].departamentoOriginal
-        : turma.departamentoTurma
-      : turma.departamentoTurma;
-
-    // Limpa aspas do departamento original (CSV pode ter aspas embutidas)
-    const departamentoOriginalLimpo = departamentoOriginal
-      ? departamentoOriginal.replace(/['"]/g, "").trim()
-      : departamentoOriginal;
-
-    const departamentoFake = `${tipo.prefixo}-${departamentoOriginalLimpo}`;
-
     const novaSolicitacao = {
       turmaId: turma._id,
       idTurma: turma.idTurma,
       nomeDisciplina: turma.nomeDisciplina,
       turma: turma.turma,
-      departamentoOriginal: departamentoOriginalLimpo,
+      departamentoTurma: turma.departamentoTurma,
       tipoSolicitacao: tipo.id,
       tipoSolicitacaoLabel: tipo.label,
-      departamentoFake,
       ano: turma.ano,
       semestre: turma.semestre,
       campus: turma.campus,
@@ -158,7 +147,8 @@ class SolicitacoesService {
   }
 
   /**
-   * Aplica a solicitação: atualiza o departamentoTurma no backend
+   * Aplica a solicitação: seta o campo 'solicitacao' da turma no backend.
+   * O departamentoTurma NÃO é alterado — o solver usa atributos das salas.
    * @param {string} turmaId
    * @returns {Promise}
    */
@@ -167,14 +157,13 @@ class SolicitacoesService {
     if (!solicitacao) throw new Error("Solicitação não encontrada");
 
     return TurmasDataService.updateTurma(turmaId, {
-      departamentoTurma: solicitacao.departamentoFake,
       solicitacao: solicitacao.tipoSolicitacao,
-      departamentoOriginal: solicitacao.departamentoOriginal,
     });
   }
 
   /**
-   * Reverte a solicitação: restaura o departamentoTurma original
+   * Reverte a solicitação: limpa o campo 'solicitacao' da turma no backend.
+   * O departamentoTurma não precisa ser restaurado (nunca foi alterado).
    * @param {string} turmaId
    * @returns {Promise}
    */
@@ -183,9 +172,7 @@ class SolicitacoesService {
     if (!solicitacao) throw new Error("Solicitação não encontrada");
 
     const result = await TurmasDataService.updateTurma(turmaId, {
-      departamentoTurma: solicitacao.departamentoOriginal,
       solicitacao: null,
-      departamentoOriginal: null,
     });
 
     this.removeSolicitacao(turmaId);

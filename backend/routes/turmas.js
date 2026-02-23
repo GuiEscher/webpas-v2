@@ -479,9 +479,11 @@ router.route("/update/:id").post(protect, (req, res) => {
     .catch((err) => res.status(400).json(err));
 });
 
-// --- ROTA DE LIMPEZA DE DEPARTAMENTOS FAKE ---
-// Encontra turmas com departamentos residuais (DEP-TERREO, TERREO-DEP-TERREO, etc.)
-// e restaura o departamento original.
+// --- ROTA DE LIMPEZA DE DEPARTAMENTOS FAKE (LEGACY) ---
+// Usada para limpar turmas com departamentos residuais de antes da nova abordagem
+// (DEP-TERREO, TERREO-DEP-TERREO, etc.) e restaurar o departamento original.
+// Na nova abordagem, o departamentoTurma nunca é alterado — apenas o campo
+// 'solicitacao' é setado, e o solver aplica penalidades com base nos atributos da sala.
 router.post("/limpar-departamentos-fake", protect, async (req, res) => {
   try {
     const userId = req.user._id;

@@ -57,29 +57,78 @@ async function resolve(modelo, delta, mipGap, tmLim) {
         .trim()
         .toLowerCase();
 
-      const distValue =
+      let distValue =
         indiceDistancias[predioLower] &&
         indiceDistancias[predioLower][deptLower]
           ? indiceDistancias[predioLower][deptLower]
           : placeholder;
 
-      // --- DEBUG: Log para turmas com departamentos fake (solicitações) ---
-      if (
-        turmaIdx < turmas.length &&
-        salaIdx === 0 &&
-        (departamentoUsado || "").match(/TERREO|PRANCHETA|QV|QB|LAB|NORTE|SUL/i)
-      ) {
+      // =================================================================
+      // PENALIDADES POR SOLICITAÇÃO (usa o NOME DO PRÉDIO da sala)
+      // Os prédios são particionados com sufixos que indicam atributos:
+      //   (T)   → térreo         ex: AT02 (T), AT05 (T)
+      //   .Pr   → prancheta      ex: AT05.Pr, AT07.Pr
+      //   .Qv   → quadro verde   ex: AT05.Qv
+      //   .Qb   → quadro branco  ex: AT05.Qb
+      //   (LAB) → laboratório    ex: AT05 (LAB)
+      //   .Dac  → DAC            ex: AT02.Dac
+      // Para norte/sul, usa o campo regiao da sala.
+      // =================================================================
+      const solicitacao = turma.solicitacao;
+      if (solicitacao && distValue < placeholder) {
+        let salaAtende = true;
+        const predioUpper = (sala.predio || "").toUpperCase();
+        const distAntes = distValue;
+
+        switch (solicitacao) {
+          case "terreo":
+            salaAtende = predioUpper.includes("(T)");
+            break;
+          case "prancheta":
+            salaAtende = predioUpper.includes(".PR");
+            break;
+          case "lab":
+            salaAtende = predioUpper.includes("(LAB)");
+            break;
+          case "qv":
+            salaAtende = predioUpper.includes(".QV");
+            break;
+          case "qb":
+            salaAtende = predioUpper.includes(".QB");
+            break;
+          case "esp-norte":
+            salaAtende = (sala.regiao || "").toLowerCase() === "norte";
+            break;
+          case "esp-sul":
+            salaAtende = (sala.regiao || "").toLowerCase() === "sul";
+            break;
+          default:
+            salaAtende = true;
+        }
+
+        if (!salaAtende) {
+          distValue = placeholder; // Penalidade alta: solver evitará essa sala
+        }
+
+        // --- DEBUG DETALHADO: primeira sala de cada turma com solicitação ---
+        if (salaIdx === 0) {
+          console.log(
+            `\n🔍 SOLICITAÇÃO DETECTADA:`,
+            `\n  Turma: "${turma.nomeDisciplina}" (${turma.idTurma})`,
+            `\n  Solicitacao: "${solicitacao}"`,
+            `\n  Departamento: "${departamentoUsado}"`,
+            `\n  Exemplo de Sala: "${sala.nomeSala}" prédio="${sala.predio}"`,
+            `\n  Prédio Upper: "${predioUpper}"`,
+            `\n  Sala Atende? ${salaAtende ? "✅ SIM" : "❌ NÃO"}`,
+            `\n  Distância: ${distAntes} → ${distValue}`,
+          );
+        }
+      }
+
+      // --- DEBUG: Log resumido para turmas com solicitação ---
+      if (turmaIdx < turmas.length && salaIdx === 0 && solicitacao) {
         console.log(
-          `  🔍 TURMA SOLICIT: "${turma.nomeDisciplina}" dept_raw="${departamentoUsado}" dept_lower="${deptLower}" | departamentoTurma="${turma.departamentoTurma}" departamentoOferta="${turma.departamentoOferta}"`,
-        );
-        console.log(
-          `     Prédios disponíveis: ${salas
-            .map((s) => {
-              const p = s.predio.replace(/['"]/g, "").trim().toLowerCase();
-              const d = indiceDistancias[p]?.[deptLower];
-              return p + "=" + (d !== undefined ? d : "MISS");
-            })
-            .join(", ")}`,
+          `  📋 RESUMO: Turma="${turma.nomeDisciplina}" tem solicitacao="${solicitacao}"`,
         );
       }
 
