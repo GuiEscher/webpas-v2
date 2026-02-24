@@ -21,6 +21,7 @@ const turmaSchema = new Schema({
   alocadoChefia: { type: Boolean, trim: true },
   creditosAula: { type: Number, trim: true },
   docentes: { type: String, trim: true },
+  juncao: { type: Number, default: 0 },
   ano: { type: Number, required: true },
   semestre: { type: Number, required: true },
   user: { type: mongoose.Types.ObjectId, ref: "User", required: true },

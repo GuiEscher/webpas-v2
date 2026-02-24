@@ -141,6 +141,7 @@ router.post("/upload-csv", protect, upload.single("file"), async (req, res) => {
             user: userId,
             alocadoChefia: isAlocadoChefia,
             tipoQuadro: "Indiferente",
+            juncao: Number(row["juncao_id"]) || 0,
           };
 
           // Log de debug (apenas primeira linha)
@@ -189,6 +190,7 @@ router.post("/upload-csv", protect, upload.single("file"), async (req, res) => {
             user: userId,
             alocadoChefia: isAlocadoChefia,
             tipoQuadro: "Indiferente",
+            juncao: Number(row["juncao_id"]) || 0,
           };
 
           // Log de debug (apenas primeira linha)
@@ -371,6 +373,7 @@ router.route("/add").post(protect, (req, res) => {
     tipoQuadro,
     alocadoChefia,
     horario_id,
+    juncao,
   } = req.body;
   const user = req.user;
 
@@ -405,6 +408,8 @@ router.route("/add").post(protect, (req, res) => {
 
     // ADICIONEI AQUI TAMBÉM CASO USE A ROTA /add MANUAL
     horario_id: horario_id || undefined,
+
+    juncao: Number(juncao) || 0,
   });
 
   novaTurma

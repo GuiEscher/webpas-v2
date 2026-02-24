@@ -48,6 +48,9 @@ class ExcelExporter {
       if (state.creditosAula) {
         resultObj["Créditos"] = alocacao.turma.creditosAula;
       }
+      if (alocacao.turma.juncao && alocacao.turma.juncao > 0) {
+        resultObj["Junção"] = alocacao.juncao ? "Junto" : alocacao.turma.juncao;
+      }
 
       resultArray.push(resultObj);
     });
@@ -80,6 +83,9 @@ class ExcelExporter {
       resultObj["Número de Alunos"] = alocacao.turma.totalTurma;
       resultObj["Docentes"] = alocacao.turma.docentes;
       resultObj["Créditos"] = alocacao.turma.creditosAula;
+      if (alocacao.turma.juncao && alocacao.turma.juncao > 0) {
+        resultObj["Junção"] = alocacao.juncao ? "Junto" : alocacao.turma.juncao;
+      }
 
       resultArray.push(resultObj);
     });
@@ -135,6 +141,9 @@ class ExcelExporter {
       if (state.creditosAula) {
         resultObj["Créditos"] = alocacao.turma.creditosAula;
       }
+      if (alocacao.turma.juncao && alocacao.turma.juncao > 0) {
+        resultObj["Junção"] = alocacao.juncao ? "Junto" : alocacao.turma.juncao;
+      }
 
       resultArray.push(resultObj);
     });
@@ -167,6 +176,9 @@ class ExcelExporter {
       resultObj["Número de Alunos"] = alocacao.turma.totalTurma;
       resultObj["Docentes"] = alocacao.turma.docentes;
       resultObj["Créditos"] = alocacao.turma.creditosAula;
+      if (alocacao.turma.juncao && alocacao.turma.juncao > 0) {
+        resultObj["Junção"] = alocacao.juncao ? "Junto" : alocacao.turma.juncao;
+      }
 
       resultArray.push(resultObj);
     });

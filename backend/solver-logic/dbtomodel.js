@@ -194,9 +194,9 @@ async function dbtomodel(
     horarioInicio: { $in: listaInicioF1 },
     horarioFim: { $in: listaFimF1 },
     user: user._id,
-    totalTurma: { $gte: minAlunos },
+    $or: [{ totalTurma: { $gte: minAlunos } }, { juncao: { $gt: 0 } }],
     alocadoChefia: { $ne: true },
-    creditosAula: { $gt: 0 }, // Ignora se créditos forem 0
+    creditosAula: { $gt: 0 },
   });
 
   let rawTurmasF12 = await Turma.find({
@@ -206,9 +206,9 @@ async function dbtomodel(
     horarioInicio: { $in: listaInicioF12 },
     horarioFim: { $in: listaFimF12 },
     user: user._id,
-    totalTurma: { $gte: minAlunos },
+    $or: [{ totalTurma: { $gte: minAlunos } }, { juncao: { $gt: 0 } }],
     alocadoChefia: { $ne: true },
-    creditosAula: { $gt: 0 }, // Ignora se créditos forem 0
+    creditosAula: { $gt: 0 },
   });
 
   let rawTurmasF2 = await Turma.find({
@@ -218,9 +218,9 @@ async function dbtomodel(
     horarioInicio: { $in: listaInicioF2 },
     horarioFim: { $in: listaFimF2 },
     user: user._id,
-    totalTurma: { $gte: minAlunos },
+    $or: [{ totalTurma: { $gte: minAlunos } }, { juncao: { $gt: 0 } }],
     alocadoChefia: { $ne: true },
-    creditosAula: { $gt: 0 }, // Ignora se créditos forem 0
+    creditosAula: { $gt: 0 },
   });
 
   // ==========================================================================
@@ -272,10 +272,77 @@ async function dbtomodel(
   modelo.turmasf2 = turmasF2_Final;
   rawTurmasF12.forEach((t) => modelo.turmasf12.push(t));
 
+  // ==========================================================================
+  // LÓGICA DE JUNÇÃO (MESMA SALA PARA TURMAS COM MESMO CÓDIGO + HORÁRIO)
+  // ==========================================================================
+  // Turmas com juncao > 0, mesmo codDisciplina e mesmo horarioInicio são
+  // agrupadas. A primeira turma (representante) recebe a soma de totalTurma
+  // de todas as turmas do grupo. As demais são removidas do solver e
+  // armazenadas em modelo.juncaoTurmas para receberem a mesma sala após
+  // a otimização (propagação feita em trataresultado.js).
+  // ==========================================================================
+
+  modelo.juncaoTurmas = [];
+
+  function processarJuncao(turmaArray) {
+    const juncaoGroups = {};
+    const turmasFinais = [];
+
+    // Agrupa turmas com juncao > 0 por codDisciplina + horarioInicio
+    turmaArray.forEach((turma) => {
+      if (turma.juncao && turma.juncao > 0) {
+        const key = `${turma.codDisciplina}_${turma.horarioInicio}`;
+        if (!juncaoGroups[key]) {
+          juncaoGroups[key] = [];
+        }
+        juncaoGroups[key].push(turma);
+      } else {
+        turmasFinais.push(turma);
+      }
+    });
+
+    // Processa cada grupo de junção
+    Object.values(juncaoGroups).forEach((group) => {
+      if (group.length <= 1) {
+        // Grupo com 1 turma: sem junção efetiva, mantém normal
+        turmasFinais.push(group[0]);
+        return;
+      }
+
+      // Primeira turma = representante do grupo
+      const representante = group[0];
+      let totalSomado = representante.totalTurma;
+
+      for (let i = 1; i < group.length; i++) {
+        totalSomado += group[i].totalTurma;
+        modelo.juncaoTurmas.push({
+          turmaJoined: group[i],
+          representanteId: representante._id.toString(),
+        });
+      }
+
+      // Representante recebe a soma dos alunos de todo o grupo
+      representante.totalTurma = totalSomado;
+      turmasFinais.push(representante);
+
+      console.log(
+        `[dbtomodel] 🔗 Junção: ${representante.codDisciplina} ${representante.turma} (${representante.nomeDisciplina}) - ${group.length} turmas → totalTurma=${totalSomado}`,
+      );
+    });
+
+    return turmasFinais;
+  }
+
+  modelo.turmasf1 = processarJuncao(modelo.turmasf1);
+  modelo.turmasf12 = processarJuncao(modelo.turmasf12);
+  modelo.turmasf2 = processarJuncao(modelo.turmasf2);
+
+  // ==========================================================================
+
   const totalTurmas =
     modelo.turmasf1.length + modelo.turmasf12.length + modelo.turmasf2.length;
   console.log(
-    `[dbtomodel] Total final: ${totalTurmas} (F1: ${modelo.turmasf1.length}, F12: ${modelo.turmasf12.length}, F2: ${modelo.turmasf2.length})`,
+    `[dbtomodel] Total final: ${totalTurmas} (F1: ${modelo.turmasf1.length}, F12: ${modelo.turmasf12.length}, F2: ${modelo.turmasf2.length})${modelo.juncaoTurmas.length > 0 ? ` [${modelo.juncaoTurmas.length} turma(s) em junção]` : ""}`,
   );
 
   // ==========================================================================

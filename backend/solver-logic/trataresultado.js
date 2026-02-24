@@ -1,27 +1,55 @@
-async function trataresultado(modelo,resultado){
+async function trataresultado(modelo, resultado) {
+  const turmasF1 = modelo.turmasf1;
+  const turmasF12 = modelo.turmasf12;
+  const turmasF2 = modelo.turmasf2;
+  const turmas = new Array().concat(turmasF1, turmasF12, turmasF2);
+  const alocacoes = resultado.result?.vars ? resultado.result.vars : [];
+  let alocacoesTratadas = new Array();
 
-    const turmasF1 = modelo.turmasf1 
-    const turmasF12 = modelo.turmasf12
-    const turmasF2 =  modelo.turmasf2
-    const turmas = new Array().concat(turmasF1, turmasF12, turmasF2)
-    const alocacoes = resultado.result?.vars ? resultado.result.vars : []
-    let alocacoesTratadas = new Array()
+  Object.keys(alocacoes).map((alocacao) => {
+    let turma = parseInt(alocacao.slice(1, alocacao.indexOf("s"))) - 1;
+    let sala =
+      parseInt(
+        alocacao.slice(alocacao.indexOf("s") + 1, alocacao.indexOf("h")),
+      ) - 1;
+    let horario = parseInt(alocacao.slice(alocacao.indexOf("h") + 1));
 
-    Object.keys(alocacoes).map((alocacao)=>{
-        let turma = parseInt(alocacao.slice(1,alocacao.indexOf("s"))) - 1
-        let sala = parseInt(alocacao.slice(alocacao.indexOf("s")+1,alocacao.indexOf("h"))) - 1
-        let horario = parseInt(alocacao.slice(alocacao.indexOf("h")+1)) 
+    let alocacaoTratada = {
+      turma: turmas[turma],
+      sala: modelo.salas[sala],
+      horarioSlot: horario,
+    };
+    alocacoesTratadas.push(alocacaoTratada);
+  });
 
-        let alocacaoTratada = {
-            turma: turmas[turma],
-            sala: modelo.salas[sala],
-            horarioSlot: horario,
+  // ==========================================================================
+  // PROPAGAÇÃO DE JUNÇÃO: turmas unidas recebem a mesma sala do representante
+  // ==========================================================================
+  if (modelo.juncaoTurmas && modelo.juncaoTurmas.length > 0) {
+    const alocacoesJuncao = [];
+    alocacoesTratadas.forEach((alocacao) => {
+      if (!alocacao.turma || !alocacao.turma._id) return;
+      const turmaId = alocacao.turma._id.toString();
+      modelo.juncaoTurmas.forEach((jt) => {
+        if (jt.representanteId === turmaId) {
+          alocacoesJuncao.push({
+            turma: jt.turmaJoined,
+            sala: alocacao.sala,
+            horarioSlot: alocacao.horarioSlot,
+            juncao: true,
+          });
         }
-        alocacoesTratadas.push(alocacaoTratada)
-    })
+      });
+    });
+    if (alocacoesJuncao.length > 0) {
+      console.log(
+        `[trataresultado] 🔗 Junção: ${alocacoesJuncao.length} alocação(ões) propagada(s)`,
+      );
+      alocacoesTratadas = alocacoesTratadas.concat(alocacoesJuncao);
+    }
+  }
 
-    return alocacoesTratadas
-
+  return alocacoesTratadas;
 }
 
-exports.trataresultado = trataresultado
+exports.trataresultado = trataresultado;
