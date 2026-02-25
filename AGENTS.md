@@ -1,5 +1,16 @@
 # WebPAS — Contexto Completo do Projeto
 
+> **Última Atualização**: Fevereiro 2026  
+> **Status**: Sistema de acessibilidade por penalidades ✅ | Sistema de junção de turmas ⚠️ (implementado, não testado)
+
+## Changelog Recente
+
+- **Fev/2026**: Sistema de acessibilidade **reformulado** — substituído sistema de "departamentos fake" por **penalidades por sufixo de prédio** no solver
+- **Fev/2026**: Sistema de **junção de turmas** implementado (agrupamento por `juncao_id`) — aguardando testes
+- **Jan/2026**: Correção de bugs de normalização (case mismatch, aspas embutidas em CSVs)
+
+---
+
 ## 1. Visão Geral
 
 **WebPAS** (Programa de Alocação de Salas) é um sistema web para **alocação automática de turmas em salas** de universidades. Usa um **solver de programação linear inteira (GLPK.js)** para minimizar a distância entre departamentos e prédios, respeitando restrições de capacidade, horário e disponibilidade.
@@ -101,64 +112,84 @@ Quando um aluno cadeirante se matricula em uma turma, essa turma precisa ser alo
 - Turma que precisa de **laboratório**
 - Turma que precisa ficar na **região norte/sul** do campus
 
+> **Nota Histórica**: Versões anteriores do sistema resolviam isso criando "departamentos virtuais" (TERREO-DC, PRANCHETA-DC), mas essa abordagem foi **substituída** pelo sistema de penalidades por sufixo descrito abaixo.
+
 ---
 
-## 4. Solução Implementada: Departamentos Virtuais ("Fake")
+## 4. Solução Implementada: Penalidades por Sufixo de Prédio
 
 ### Conceito
 
-A solução atual **manipula o departamento da turma** para criar um "departamento virtual" que, combinado com distâncias específicas na matriz, força o solver a priorizar salas adequadas.
+A solução atual usa **verificação de sufixos nos nomes dos prédios** diretamente no solver. Quando uma turma tem uma solicitação especial (térreo, prancheta, etc.), o solver adiciona uma **penalidade de +99999** ao custo de distância para salas em prédios que **não têm o sufixo correspondente**.
 
 ### Passo a Passo do Mecanismo
 
-1. **Prédios Particionados**: O usuário cria "sub-prédios" com sufixos no cadastro de salas.  
-   Exemplo: `AT02` → `AT02`, `AT02(T)` (térreo), `AT02.Pr` (prancheta)
+1. **Prédios Particionados**: O usuário cadastra salas com sufixos que identificam características especiais:
+   - `AT02` — Prédio normal (andares superiores)
+   - `AT02(T)` — Salas no térreo do prédio AT02
+   - `AT02.Pr` — Salas com prancheta de desenho
+   - `AT02.Qv` ou `AT02(QV)` — Salas com quadro verde
+   - `AT02.Qb` ou `AT02(QB)` — Salas com quadro branco
+   - `AT02(LAB)` — Laboratórios
 
-2. **Solicitação**: O usuário clica com botão direito em uma turma na lista e seleciona o tipo de solicitação.
+2. **Solicitação**: O usuário clica com botão direito em uma turma na lista e seleciona o tipo de solicitação (salva no `localStorage`)
 
-3. **Departamento Virtual**: O sistema muda o `departamentoTurma` da turma:
-   - Fórmula: `{PREFIXO}-{DEPARTAMENTO_ORIGINAL}`
-   - Exemplo: Turma do DC com solicitação Térreo → `departamentoTurma = "TERREO-DC"`
+3. **Aplicação**: Ao clicar "Aplicar", o campo `solicitacao` da turma é modificado no banco via `PUT /turmas/update/:id`
+   - Exemplo: Turma do DC com solicitação Térreo → `solicitacao = "terreo"`
+   - **Importante**: O departamentoTurma NÃO é alterado (continua sendo o departamento original)
 
-4. **Distâncias Configuradas**: O usuário cadastra distâncias para o departamento virtual:
-   - `TERREO-DC ↔ AT02(T)` = **0** (térreo do prédio)
-   - `TERREO-DC ↔ AT02` = **999** (andares superiores)
-   - `TERREO-DC ↔ AT03` = **999** (outro prédio)
+4. **Distâncias**: Apenas as distâncias normais são necessárias:
+   - `DC ↔ AT02` = 50 (distância real)
+   - `DC ↔ AT02(T)` = 50 (mesma distância — é o mesmo prédio!)
+   - `DC ↔ AT03` = 300 (distância real)
 
-5. **Solver**: Ao minimizar, a turma com `departamentoTurma = "TERREO-DC"` terá custo 0 para salas no térreo e custo 999 para as demais → será alocada no térreo.
+5. **Solver**: Para cada par turma-sala, o solver:
+   - Calcula a distância base: `dist = indiceDistancias[predio][departamento]`
+   - **Verifica sufixos**: Se `turma.solicitacao === "terreo"` e `!sala.predio.includes("(T)")` → `dist += 99999`
+   - Resultado: Turma só vai para salas com sufixo adequado (custo 50) e evita salas inadequadas (custo 50+99999)
 
 ### Tipos de Solicitação Disponíveis
 
-| ID          | Label        | Prefixo    | Exemplo Dept Virtual | Sufixo Prédio |
-|-------------|-------------|------------|----------------------|---------------|
-| terreo      | Térreo      | TERREO     | TERREO-DC            | (T)           |
-| prancheta   | Prancheta   | PRANCHETA  | PRANCHETA-DC         | .Pr           |
-| qv          | Quadro Verde| QV         | QV-DFCM              | (QV)          |
-| qb          | Quadro Branco| QB        | QB-DFCM              | (QB)          |
-| lab         | Laboratório | LAB        | LAB-DQ               | (LAB)         |
-| esp-norte   | Esp-Norte   | NORTE      | NORTE-DC             | (N)           |
-| esp-sul     | Esp-Sul     | SUL        | SUL-DC               | (S)           |
+| ID          | Label        | Campo      | Sufixo Prédio Necessário |
+|-------------|-------------|------------|--------------------------|
+| terreo      | Térreo      | solicitacao: "terreo" | (T) |
+| prancheta   | Prancheta   | solicitacao: "prancheta" | .Pr |
+| qv          | Quadro Verde| solicitacao: "qv" | .Qv ou (QV) |
+| qb          | Quadro Branco| solicitacao: "qb" | .Qb ou (QB) |
+| lab         | Laboratório | solicitacao: "lab" | (LAB) |
+| esp-norte   | Esp-Norte   | solicitacao: "esp-norte" | (N) |
+| esp-sul     | Esp-Sul     | solicitacao: "esp-sul" | (S) |
 
 ### Armazenamento
 
-- **Solicitações**: `localStorage` do navegador (chave `webpas_solicitacoes`), gerenciado por `src/services/solicitacoes.js`
-- **Aplicação**: Ao "Aplicar", o `departamentoTurma` da turma é alterado no MongoDB via `PUT /turmas/update/:id`
-- **Reversão**: Ao "Reverter", o departamento original é restaurado e a solicitação removida do localStorage
-- **Limpeza**: Rota `POST /turmas/limpar-departamentos-fake` limpa departamentos fake residuais do banco
+- **Solicitações (localStorage)**: `localStorage` do navegador (chave `webpas_solicitacoes`), gerenciado por `src/services/solicitacoes.js`
+  - Contém: `turmaId`, `tipo`, `departamentoOriginal` (para reverter)
+  - Usado apenas para interface (mostrar badge, reverter)
+
+- **Solicitação Aplicada (MongoDB)**: Campo `solicitacao` da turma é setado via `PUT /turmas/update/:id`
+  - Exemplo: `{ solicitacao: "terreo" }`
+  - **Atenção**: O schema precisa ter o campo `solicitacao` definido, caso contrário Mongoose ignora em strict mode
+
+- **Reversão**: Ao "Reverter", o campo `solicitacao` é removido (`null` ou `undefined`) e a entrada no localStorage é deletada
+
+- **Limpeza**: Não há necessidade de rota de limpeza (não cria departamentos fake no banco)
 
 ### Schemas Relevantes do MongoDB
 
-**Turma** (NÃO tem campo `solicitacao` nem `departamentoOriginal` no schema!):
+**Turma** (com campo `solicitacao` para acessibilidade):
 ```javascript
 {
   idTurma, campus, departamentoTurma, codDisciplina, turma,
   nomeDisciplina, totalTurma, departamentoOferta, diaDaSemana,
   horarioInicio, horarioFim, alocadoChefia, creditosAula, docentes,
-  ano, semestre, user, tipoQuadro, horario_id
+  ano, semestre, user, tipoQuadro, horario_id,
+  juncao,          // Para junção de turmas (código de agrupamento)
+  solicitacao,     // Para acessibilidade: "terreo", "prancheta", "qv", "qb", "lab", "esp-norte", "esp-sul"
+  departamentoOriginal  // (NÃO usado, apenas no localStorage para reverter)
 }
 ```
 
-> **ATENÇÃO**: O Mongoose está em `strict: true` por padrão, então campos como `solicitacao` e `departamentoOriginal` enviados no `req.body` são **silenciosamente descartados** na hora do `save()`. Esse é um bug/limitação conhecida. A informação de solicitação só persiste no localStorage do navegador.
+> **Nota sobre solicitacao**: O campo `solicitacao` foi adicionado ao schema (`turma.model.js`) para suportar o sistema de acessibilidade. Valores possíveis: `"terreo"`, `"prancheta"`, `"qv"`, `"qb"`, `"lab"`, `"esp-norte"`, `"esp-sul"`, ou `null`.
 
 **Distância**:
 ```javascript
@@ -187,28 +218,27 @@ Os CSVs importados usam separador `;` e valores com **aspas simples embutidas** 
 | `dbtomodel.js` → `normalizarString()` | Remove TODAS as aspas (`/['"]/g`) e espaços |
 | `dbtomodel.js` → índice de distâncias | Converte tudo para **lowercase** |
 | `gerasalahorarioglpk.js` → lookup | Remove aspas + lowercase do `departamentoTurma` e `predio` |
-| `solicitacoes.js` → `addSolicitacao()` | Limpa aspas do departamento original antes de gerar nome fake |
 
 ### Bug de Case Mismatch (Corrigido)
 
 - Frontend normalizava departamentos para lowercase ao salvar
-- Solicitação salvava departamento em UPPERCASE (ex: `TERREO-DC`)
+- Banco tinha departamentos em diferentes cases (DC vs dc vs Dc)
 - Solver buscava no índice de distâncias que era case-sensitive
 - **Fix**: Tudo normalizado para lowercase no solver (`dbtomodel` e `gerasalahorarioglpk`)
 
 ### Bug de Aspas (Corrigido)
 
 - CSV tinha `'DGero'` (com aspas embedded)
-- Solicitação criava `TERREO-'DGero'` (com aspas)
-- Distância indexada como `terreo-dgero` (sem aspas, lowercase)
-- Lookup falhava porque `terreo-'dgero'` ≠ `terreo-dgero`
+- Banco salvava com aspas: `departamentoTurma: "'DGero'"`
+- Distância indexada como `dgero` (sem aspas, lowercase)
+- Lookup falhava porque `'dgero'` ≠ `dgero`
 - **Fix**: `normalizarString` remove TODAS as aspas globalmente (`/['"]/g`)
 
 ---
 
 ## 6. Código-Chave Atual
 
-### `gerasalahorarioglpk.js` — Cálculo de Distâncias no Solver
+### `gerasalahorarioglpk.js` — Cálculo de Distâncias + Penalidades no Solver
 
 ```javascript
 const distanciasCalculadas = turmas.map((turma) => {
@@ -220,12 +250,42 @@ const distanciasCalculadas = turmas.map((turma) => {
     const deptLower = (departamentoUsado || "").replace(/['"]/g, "").trim().toLowerCase();
     const predioLower = (sala.predio || "").replace(/['"]/g, "").trim().toLowerCase();
 
-    // Busca no índice
-    const distValue = indiceDistancias[predioLower]?.[deptLower] ?? 99999;
+    // Busca distância base no índice
+    let distValue = indiceDistancias[predioLower]?.[deptLower] ?? 99999;
+    
+    // === PENALIDADES POR SOLICITAÇÃO ===
+    // Verifica sufixo do prédio e adiciona penalidade se inadequado
+    if (turma.solicitacao === 'terreo' && !sala.predio.includes('(T)')) {
+      distValue += 99999;
+    }
+    if (turma.solicitacao === 'prancheta' && !sala.predio.includes('.Pr')) {
+      distValue += 99999;
+    }
+    if (turma.solicitacao === 'qv' && !sala.predio.includes('.Qv') && !sala.predio.includes('(QV)')) {
+      distValue += 99999;
+    }
+    if (turma.solicitacao === 'qb' && !sala.predio.includes('.Qb') && !sala.predio.includes('(QB)')) {
+      distValue += 99999;
+    }
+    if (turma.solicitacao === 'lab' && !sala.predio.includes('(LAB)')) {
+      distValue += 99999;
+    }
+    if (turma.solicitacao === 'esp-norte' && !sala.predio.includes('(N)')) {
+      distValue += 99999;
+    }
+    if (turma.solicitacao === 'esp-sul' && !sala.predio.includes('(S)')) {
+      distValue += 99999;
+    }
+    
     return distValue;
   });
 });
 ```
+
+**Lógica**: 
+- Distância base vem do índice normal (ex: DC ↔ AT02 = 50)
+- Se turma tem solicitação mas sala está em prédio sem sufixo → +99999 de penalidade
+- Resultado: Solver evita salas inadequadas (custo muito alto)
 
 ### `dbtomodel.js` — Construção do Índice de Distâncias
 
@@ -240,21 +300,7 @@ modelo.distancias = distanciasDb.reduce((acc, cur) => {
 }, {});
 ```
 
-### `solicitacoes.js` — Criação do Departamento Virtual
-
-```javascript
-addSolicitacao(turma, tipoSolicitacaoId) {
-  const tipo = TIPOS_SOLICITACAO.find(t => t.id === tipoSolicitacaoId);
-  const departamentoOriginal = /* preserva o original mesmo com troca de tipo */;
-  
-  // Limpa aspas do CSV
-  const departamentoOriginalLimpo = departamentoOriginal
-    .replace(/['"]/g, "").trim();
-  
-  const departamentoFake = `${tipo.prefixo}-${departamentoOriginalLimpo}`;
-  // Ex: "TERREO" + "-" + "DGero" = "TERREO-DGero"
-}
-```
+**Observação**: Apenas distâncias normais são necessárias (DC ↔ AT02, DC ↔ AT02(T), etc.). Não há departamentos virtuais.
 
 ---
 
@@ -263,65 +309,53 @@ addSolicitacao(turma, tipoSolicitacaoId) {
 ### O que funciona
 
 - ✅ Solicitações via menu de contexto (botão direito na lista de turmas)
-- ✅ 7 tipos de solicitação com prefixos dinâmicos
-- ✅ Aplicar/Reverter individual e em lote
+- ✅ 7 tipos de solicitação disponíveis
+- ✅ Aplicar/Reverter individual e em lote (localStorage + MongoDB)
+- ✅ Sistema de penalidades por sufixo de prédio no solver
 - ✅ Normalização case-insensitive e sem aspas no solver
-- ✅ Rota de limpeza de departamentos fake residuais
-- ✅ Páginas de ajuda reescritas com exemplos práticos
-- ✅ O solver agora **prioriza corretamente** turmas com solicitação (resultado melhorou)
+- ✅ Páginas de ajuda com exemplos práticos
+- ✅ O solver **prioriza corretamente** turmas com solicitação para salas adequadas
+- ✅ Não cria departamentos fake no banco (problema resolvido!)
 
 ### O que NÃO funciona / Limitações
 
-- ⚠️ `departamentoOriginal` e `solicitacao` **não são salvos no MongoDB** (Mongoose strict mode descarta silenciosamente) — só existem no localStorage
-- ⚠️ A rota `/update/:id` usa `Object.assign(turma, req.body)` mas o schema não tem esses campos
-- ⚠️ A rota `/iscomplete` (verificação de distâncias) não normaliza para lowercase, então pode reportar falsos positivos/negativos
+- ⚠️ O campo `solicitacao` precisa estar **definido no schema** (`turma.model.js`) para ser salvo corretamente
 - ⚠️ Valores do CSV mantêm aspas embutidas nos dados (headers são limpos, valores não)
+- ⚠️ Se o prédio não tiver o sufixo correto cadastrado, a turma nunca será alocada naquela sala (penalidade +99999)
 
 ---
 
-## 8. Questão Arquitetural em Aberto
+## 8. Questão Arquitetural — RESOLVIDA ✅
 
-### O Problema
+### O Problema Original (LEGACY)
 
-Para cada solicitação de acessibilidade, o sistema cria um **departamento virtual** (ex: `TERREO-DC`, `TERREO-DGero`, `PRANCHETA-DFCM`). Isso significa que:
+Nas versões anteriores, o sistema criava **departamentos virtuais** (ex: `TERREO-DC`, `PRANCHETA-DGero`) para cada solicitação. Isso causava:
 
-1. **Proliferação de departamentos fake**: Se 5 departamentos diferentes tiverem turmas com solicitação de térreo, são criados 5 departamentos virtuais (`TERREO-DC`, `TERREO-DGero`, `TERREO-DFCM`, `TERREO-DQ`, `TERREO-DEE`)
-2. **Distâncias manuais para cada um**: O usuário precisa cadastrar distâncias entre CADA departamento virtual e CADA prédio manualmente
-3. **Complexidade cresce**: Com 7 tipos de solicitação × N departamentos × M prédios = muitas entradas de distância
-4. **Limpeza necessária**: Após rodar o solver, os departamentos fake ficam no banco e precisam ser limpos (rota `limpar-departamentos-fake` ou reverter solicitações)
+1. **Proliferação de departamentos fake**: N departamentos × 7 tipos de solicitação
+2. **Distâncias manuais**: Usuário tinha que cadastrar distâncias para cada combinação
+3. **Complexidade crescente**: Com muitos departamentos, ficava inviável
+4. **Limpeza necessária**: Precisava limpar o banco após solver
 
-### Resultado Atual
+### Solução Implementada ✅
 
-O sistema **melhorou** — as turmas com solicitação agora são alocadas corretamente nos prédios adequados após os fixes de case/aspas. Porém, a gestão manual de tantos departamentos virtuais e distâncias é trabalhosa.
+**Abordagem 2: Penalidade na Função Objetivo**
 
-### Pergunta
+Em vez de manipular departamentos, o solver agora:
+- Usa o `departamentoTurma` original da turma (não modifica)
+- Lê o campo `turma.solicitacao` (ex: `"terreo"`, `"prancheta"`)
+- Para cada par turma-sala, verifica o **sufixo do nome do prédio**
+- Se o prédio não tem o sufixo adequado → adiciona penalidade +99999
 
-> **Vale a pena ficar criando diversos departamentos fake, ou existe uma forma mais simples de resolver o problema de acessibilidade/restrições especiais no solver?**
+**Vantagens**:
+- ✅ Sem departamentos fake no banco
+- ✅ Sem distâncias extras para cadastrar (apenas distâncias normais)
+- ✅ Escalável (adicionar novo tipo de solicitação = adicionar 1 if no solver)
+- ✅ Sem necessidade de limpeza posterior
 
-### Possíveis Abordagens Alternativas a Explorar
-
-1. **Constraint direta no solver**: Em vez de manipular distâncias, adicionar uma **restrição hard** no GLPK que force `turma_com_solicitacao → apenas salas com flag correspondente` (ex: `sala.terreo === true`)
-   - Prós: Sem departamentos fake, sem distâncias extras
-   - Contras: Requer refatorar a geração de constraints no solver
-
-2. **Penalidade na função objetivo**: Multiplicar um fator de penalidade grande quando a sala não tem a propriedade requerida, sem mudar departamentos
-   - Prós: Sem departamentos fake
-   - Contras: Precisa que cada sala tenha as propriedades (terreo, prancheta, etc.) e o solver precisa saber verificá-las
-
-3. **Pre-filtragem de salas**: Antes de montar o modelo, filtrar as salas disponíveis para turmas com solicitação (só salas adequadas participam do modelo)
-   - Prós: Modelo menor, mais rápido
-   - Contras: Pode tornar o modelo inviável se salas forem insuficientes
-
-4. **Manter e automatizar**: Manter a abordagem de departamentos virtuais, mas **automatizar completamente** a criação de distâncias (quando solicitação é aplicada, distâncias do departamento virtual são criadas automaticamente com base nas propriedades das salas/prédios)
-   - Prós: Usa a arquitetura existente
-   - Contras: Dependência de metadados corretos nas salas
-
-### Dados Relevantes para a Decisão
-
-- O schema de **Sala** já tem campos `terreo: Boolean` e `acessivel: Boolean` — poderiam ser usados para constraint direta
-- O campo `tipoQuadro` nas salas e turmas (Verde/Branco/Indiferente) já existe — poderia ser usado sem departamentos fake
-- O solver GLPK.js suporta constraints adicionais facilmente (basta adicionar ao array `subjectTo`)
-- As distâncias reais já existem no banco — o artifício de departamento virtual é uma camada a mais por cima
+**Implementação**:
+- Código em `gerasalahorarioglpk.js` (seção de penalidades)
+- Campo `solicitacao` no schema de Turma
+- localStorage mantém histórico para interface (reverter)
 
 ---
 
@@ -329,10 +363,20 @@ O sistema **melhorou** — as turmas com solicitação agora são alocadas corre
 
 O código tem **logging extensivo** para debug nos seguintes pontos:
 
-- `gerasalahorarioglpk.js`: Logs de turmas com departamento fake (`🔍 TURMA SOLICIT`), listagem de todas as chaves do índice de distâncias (`DIST INDEX`)
-- `dbtomodel.js`: Log de turmas por tipo (F1/F12/F2), quantidade total
-- `routes/turmas.js`: Log dos valores brutos de departamento na rota `/d/`, log antes/depois na rota `/update/:id`
-- Os logs podem ser removidos ou reduzidos após estabilização
+- `gerasalahorarioglpk.js`: 
+  - Logs de turmas com solicitação (`🔍 SOLICITAÇÃO DETECTADA`)
+  - Listagem de todas as chaves do índice de distâncias (`DIST INDEX`)
+  - Resultado de penalidades aplicadas
+- `dbtomodel.js`: 
+  - Log de turmas por tipo (F1/F12/F2), quantidade total
+  - Log de junção de turmas (`🔗 Junção`)
+- `trataresultado.js`:
+  - Log de propagação de junção (`🔗 Junção: X alocação(ões) propagada(s)`)
+- `routes/turmas.js`: 
+  - Log dos valores brutos de departamento na rota `/d/`
+  - Log antes/depois na rota `/update/:id`
+
+Os logs podem ser removidos ou reduzidos após estabilização.
 
 ---
 
@@ -340,16 +384,18 @@ O código tem **logging extensivo** para debug nos seguintes pontos:
 
 ```
 1. Importar CSV de turmas → MongoDB (departamentoTurma = valor real do CSV)
-2. Cadastrar prédios/salas (com sub-prédios particionados: AT02, AT02(T), etc.)
-3. Cadastrar distâncias normais (DC ↔ AT02 = 50, DC ↔ AT03 = 300, etc.)
+2. Cadastrar prédios/salas (com sufixos: AT02, AT02(T), AT02.Pr, AT02(LAB), etc.)
+3. Cadastrar distâncias normais (DC ↔ AT02 = 50, DC ↔ AT02(T) = 50, DC ↔ AT03 = 300, etc.)
+   - Nota: AT02 e AT02(T) podem ter a mesma distância (é o mesmo prédio)
 4. Na lista de turmas, botão direito → Selecionar tipo de solicitação (salva no localStorage)
-5. "Aplicar Todas" → departamentoTurma no MongoDB muda para virtual (TERREO-DC)
-6. Na página de distâncias, aparecem os novos departamentos virtuais
-7. Configurar distâncias para os departamentos virtuais (0 para adequados, 999 para outros)
-8. Rodar o solver → turmas com solicitação são alocadas nas salas adequadas
-9. (Opcional) "Reverter Todas" → restaura departamentos originais
-10. (Opcional) "Limpar Depts Obsoletos" → remove residuais do banco
+5. "Aplicar Todas" → campo 'solicitacao' da turma é setado no MongoDB (ex: "terreo")
+   - O departamentoTurma NÃO é alterado (permanece o original)
+6. Rodar o solver → turmas com solicitação recebem penalidade +99999 para salas inadequadas
+7. Resultado: Turmas com solicitação são alocadas nas salas com sufixo correto
+8. (Opcional) "Reverter" → campo 'solicitacao' é removido, solicitação deletada do localStorage
 ```
+
+**Diferença do sistema antigo**: Não há mais departamentos virtuais, não há necessidade de cadastrar distâncias extras, não há limpeza posterior.
 
 ---
 
@@ -383,13 +429,14 @@ O código tem **logging extensivo** para debug nos seguintes pontos:
 1. **Particionamento de Prédios**: Salas são cadastradas com sufixos que identificam características:
    - `AT02(T)` — Sala no térreo do prédio AT02
    - `AT02.Pr` — Sala com prancheta de desenho
-   - `AT02.Qv` — Sala com quadro verde
-   - `AT02.Qb` — Sala com quadro branco
+   - `AT02.Qv` ou `AT02(QV)` — Sala com quadro verde
+   - `AT02.Qb` ou `AT02(QB)` — Sala com quadro branco
    - `AT02(LAB)` — Laboratório
 
 2. **Verificação no Solver**: O solver (`gerasalahorarioglpk.js`) verifica o nome do prédio da sala e aplica penalidades:
    - Se a turma tem `solicitacao = "terreo"` e a sala está em prédio **sem sufixo `(T)`** → penalidade +99999
    - Se a turma tem `solicitacao = "prancheta"` e a sala está em prédio **sem sufixo `.Pr`** → penalidade +99999
+   - Se a turma tem `solicitacao = "qv"` e a sala está em prédio **sem sufixo `.Qv` ou `(QV)`** → penalidade +99999
    - E assim por diante para todos os tipos de solicitação
 
 3. **Efeito**: O solver evita alocar turmas com solicitações em salas inadequadas (custo altíssimo torna essas alocações não-ótimas)
@@ -409,7 +456,16 @@ const distanciasCalculadas = turmas.map((turma) => {
     if (turma.solicitacao === 'prancheta' && !sala.predio.includes('.Pr')) {
       distValue += 99999;
     }
-    // ... outros tipos de solicitação
+    if (turma.solicitacao === 'qv' && !sala.predio.includes('.Qv') && !sala.predio.includes('(QV)')) {
+      distValue += 99999;
+    }
+    if (turma.solicitacao === 'qb' && !sala.predio.includes('.Qb') && !sala.predio.includes('(QB)')) {
+      distValue += 99999;
+    }
+    if (turma.solicitacao === 'lab' && !sala.predio.includes('(LAB)')) {
+      distValue += 99999;
+    }
+    // ... esp-norte, esp-sul
     
     return distValue;
   });
