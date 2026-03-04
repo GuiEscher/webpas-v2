@@ -63,6 +63,22 @@ const tableStyle = {
   "& tbody td": { fontSize: "0.7rem" },
 };
 
+const normalizarTexto = (valor = "") =>
+  String(valor)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+const normalizarCampus = (valor = "") => {
+  const campusLimpo = String(valor).trim().replace(/['"]/g, "");
+  const campusNormalizado = normalizarTexto(campusLimpo);
+
+  if (campusNormalizado.includes("sorocaba")) return "Sorocaba";
+  if (campusNormalizado.includes("sao carlos")) return "São Carlos";
+
+  return campusLimpo;
+};
+
 // --- AJUSTE 1: Adicionar "ID Horário" no cabeçalho ---
 const headCells = [
   { id: "actions", label: "Editar", disableSorting: true },
@@ -380,7 +396,7 @@ const TurmasList = (props) => {
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
       const visibleTurmas = recordsAfterPagingAndSorting().filter(
-        (t) => t.campus === viewCampus,
+        (t) => normalizarCampus(t.campus) === viewCampus,
       );
       const newSelecteds = visibleTurmas.map((turma) => turma._id);
       setSelected(newSelecteds);
@@ -413,9 +429,20 @@ const TurmasList = (props) => {
     setSelected(newSelected);
   };
 
-  const fileHandleResponse = (res) => {
+  const fileHandleResponse = (res, uploadContext) => {
     setOpenModalFile(false);
     handleServerResponses("turmas", res, setNotify);
+
+    if (uploadContext?.ano && uploadContext?.semestre) {
+      setAnoTable(uploadContext.ano);
+      setSemestreTable(uploadContext.semestre);
+      if (uploadContext.campus) {
+        setViewCampus(normalizarCampus(uploadContext.campus));
+      }
+      retornaTurmas(uploadContext.ano, uploadContext.semestre);
+      return;
+    }
+
     retornaTurmas(anoTable, semestreTable);
   };
 
@@ -445,7 +472,7 @@ const TurmasList = (props) => {
   };
 
   const turmasFiltradasPorCampus = turmas.filter(
-    (t) => t.campus === viewCampus,
+    (t) => normalizarCampus(t.campus) === viewCampus,
   );
   const { TblContainer, TblHead, TblPagination, recordsAfterPagingAndSorting } =
     useTable(turmasFiltradasPorCampus, headCells, filterFn);
@@ -816,7 +843,7 @@ const TurmasList = (props) => {
           />
           <TableBody>
             {recordsAfterPagingAndSorting().map((turma, index) => {
-              if (turma.campus !== viewCampus) return null;
+              if (normalizarCampus(turma.campus) !== viewCampus) return null;
               const isItemSelected = isSelected(turma._id);
               const labelId = `turmas-table-checkbox-${index}`;
               const valorQuadroAtual =
@@ -871,7 +898,7 @@ const TurmasList = (props) => {
                   <TableCell>{turma.horarioFim}</TableCell>
                   <TableCell>{turma.campus}</TableCell>
                   <TableCell sx={{ minWidth: 110 }}>
-                    {turma.campus === "Sorocaba" ? (
+                    {normalizarCampus(turma.campus) === "Sorocaba" ? (
                       <ToggleButtonGroup
                         value={valorQuadroAtual}
                         exclusive

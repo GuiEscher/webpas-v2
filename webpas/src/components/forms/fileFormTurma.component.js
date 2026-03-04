@@ -76,7 +76,11 @@ export default function FileFormTurma(props) {
     try {
         const res = await TurmasDataService.uploadCSV(formData);
         
-        handleResponse(res); 
+        handleResponse(res, {
+            ano: Number(values.ano),
+            semestre: Number(values.semestre),
+            campus
+        }); 
         if (res.data.erros) {
             setListaErros(res.data.erros);
         }
@@ -90,7 +94,11 @@ export default function FileFormTurma(props) {
             ? error.response 
             : { data: { msg: "Erro de conexão: não foi possível conectar ao servidor." } };
         
-        handleResponse(errorResponse);
+        handleResponse(errorResponse, {
+            ano: Number(values.ano),
+            semestre: Number(values.semestre),
+            campus
+        });
 
         if (errorResponse.data?.erros) {
             setListaErros(errorResponse.data.erros);
