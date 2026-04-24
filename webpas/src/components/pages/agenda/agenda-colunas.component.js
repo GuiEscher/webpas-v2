@@ -47,6 +47,11 @@ const AgendaColunas = (props) => {
     return sortedArray;
   };
 
+  const formatTurmaComJuncao = (turmaObj) => {
+    const turmaLabel = turmaObj?.turma || "";
+    return Number(turmaObj?.juncao) > 0 ? `${turmaLabel} (J)` : turmaLabel;
+  };
+
   return (
     <>
       <Box>
@@ -244,7 +249,7 @@ const AgendaColunas = (props) => {
                 {state.turma ? (
                   <Grid item xs={2}>
                     <Typography sx={tableRowCss}>
-                      {alocacao.turma.turma}
+                      {formatTurmaComJuncao(alocacao.turma)}
                     </Typography>
                   </Grid>
                 ) : (

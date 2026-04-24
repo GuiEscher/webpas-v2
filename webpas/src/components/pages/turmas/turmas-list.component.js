@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import TurmaForm from "../../forms/turmaForm.component";
 import FileFormTurma from "../../forms/fileFormTurma.component";
 import PageHeader from "../../re-usable/page-header.component";
@@ -59,8 +59,13 @@ import SolicitacoesService, {
 
 const tableRowCss = { "& .MuiTableCell-root": { padding: 1 } };
 const tableStyle = {
-  "& thead th span": { fontWeight: "600", fontSize: "0.7rem" },
-  "& tbody td": { fontSize: "0.7rem" },
+  minWidth: 2200,
+  "& thead th span": {
+    fontWeight: "600",
+    fontSize: "0.7rem",
+    whiteSpace: "nowrap",
+  },
+  "& tbody td": { fontSize: "0.7rem", whiteSpace: "nowrap" },
 };
 
 const normalizarTexto = (valor = "") =>
@@ -86,6 +91,7 @@ const headCells = [
   { id: "horario_id", label: "ID Horário" }, // Novo campo
   { id: "nomeDisciplina", label: "Nome da Disciplina" },
   { id: "turma", label: "Turma" },
+  { id: "juncao", label: "Junção", disableSorting: true },
   { id: "totalTurma", label: "Total" },
   { id: "diaDaSemana", label: "Dia" },
   { id: "horarioInicio", label: "Início" },
@@ -139,6 +145,7 @@ const TurmasList = (props) => {
   const [openErros, setOpenErros] = useState(false);
 
   const [viewCampus, setViewCampus] = useState("São Carlos");
+  const [juncaoFilter, setJuncaoFilter] = useState("todas");
   const [pendingChanges, setPendingChanges] = useState({});
   const [saving, setSaving] = useState(false);
 
@@ -352,6 +359,13 @@ const TurmasList = (props) => {
     }
   };
 
+  const handleJuncaoFilterChange = (event, newFilter) => {
+    if (newFilter !== null) {
+      setJuncaoFilter(newFilter);
+      setSelected([]);
+    }
+  };
+
   const retornaHorarios = () => {
     let periodos = config.periodos ? config.periodos : [];
     if (config.horarios) {
@@ -395,9 +409,7 @@ const TurmasList = (props) => {
 
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
-      const visibleTurmas = recordsAfterPagingAndSorting().filter(
-        (t) => normalizarCampus(t.campus) === viewCampus,
-      );
+      const visibleTurmas = recordsAfterPagingAndSorting();
       const newSelecteds = visibleTurmas.map((turma) => turma._id);
       setSelected(newSelecteds);
       return;
@@ -474,8 +486,44 @@ const TurmasList = (props) => {
   const turmasFiltradasPorCampus = turmas.filter(
     (t) => normalizarCampus(t.campus) === viewCampus,
   );
+
+  const juncaoAtivaMap = useMemo(() => {
+    const keyCount = {};
+    const map = {};
+
+    turmasFiltradasPorCampus.forEach((turma) => {
+      const juncaoId = Number(turma.juncao) || 0;
+      if (juncaoId <= 0) return;
+      const key = `${juncaoId}_${turma.codDisciplina || ""}_${turma.horarioInicio || ""}_${turma.horarioFim || ""}`;
+      keyCount[key] = (keyCount[key] || 0) + 1;
+    });
+
+    turmasFiltradasPorCampus.forEach((turma) => {
+      const juncaoId = Number(turma.juncao) || 0;
+      if (juncaoId <= 0) {
+        map[turma._id] = false;
+        return;
+      }
+
+      const key = `${juncaoId}_${turma.codDisciplina || ""}_${turma.horarioInicio || ""}_${turma.horarioFim || ""}`;
+      map[turma._id] = (keyCount[key] || 0) > 1;
+    });
+
+    return map;
+  }, [turmasFiltradasPorCampus]);
+
+  const turmasFiltradas = useMemo(() => {
+    if (juncaoFilter === "com") {
+      return turmasFiltradasPorCampus.filter((t) => juncaoAtivaMap[t._id]);
+    }
+    if (juncaoFilter === "sem") {
+      return turmasFiltradasPorCampus.filter((t) => !juncaoAtivaMap[t._id]);
+    }
+    return turmasFiltradasPorCampus;
+  }, [turmasFiltradasPorCampus, juncaoAtivaMap, juncaoFilter]);
+
   const { TblContainer, TblHead, TblPagination, recordsAfterPagingAndSorting } =
-    useTable(turmasFiltradasPorCampus, headCells, filterFn);
+    useTable(turmasFiltradas, headCells, filterFn);
 
   const openInModalEdit = (turma) => {
     setUpdatingT(true);
@@ -580,10 +628,11 @@ const TurmasList = (props) => {
               item
               xs={24}
               sm={12}
-              md={6}
+              md={8}
               sx={{
                 display: "flex",
                 justifyContent: { xs: "flex-start", md: "center" },
+                gap: 1,
               }}
             >
               <ToggleButtonGroup
@@ -596,9 +645,20 @@ const TurmasList = (props) => {
                 <ToggleButton value="São Carlos">São Carlos</ToggleButton>
                 <ToggleButton value="Sorocaba">Sorocaba</ToggleButton>
               </ToggleButtonGroup>
+              <ToggleButtonGroup
+                color="primary"
+                value={juncaoFilter}
+                exclusive
+                onChange={handleJuncaoFilterChange}
+                size="small"
+              >
+                <ToggleButton value="todas">Todas</ToggleButton>
+                <ToggleButton value="com">Com Junção</ToggleButton>
+                <ToggleButton value="sem">Sem Junção</ToggleButton>
+              </ToggleButtonGroup>
             </Grid>
 
-            <Grid item xs={24} sm={12} md={6}>
+            <Grid item xs={24} sm={12} md={4}>
               <TextField
                 sx={{ width: "100%" }}
                 variant="outlined"
@@ -761,7 +821,7 @@ const TurmasList = (props) => {
         </DialogActions>
       </Dialog>
 
-      <TableContainer component={Paper}>
+      <TableContainer component={Paper} sx={{ width: "100%", overflowX: "auto" }}>
         {/* Modais existentes... */}
         <Modal
           id="modalFile"
@@ -892,6 +952,29 @@ const TurmasList = (props) => {
 
                   <TableCell>{turma.nomeDisciplina}</TableCell>
                   <TableCell>{turma.turma}</TableCell>
+                  <TableCell>
+                    {Number(turma.juncao) > 0 ? (
+                      <Tooltip
+                        title={
+                          juncaoAtivaMap[turma._id]
+                            ? `Junção ativa (ID ${turma.juncao})`
+                            : `ID ${turma.juncao} sem par compatível neste período`
+                        }
+                      >
+                        <Chip
+                          label={juncaoAtivaMap[turma._id] ? "Sim" : "Não"}
+                          size="small"
+                          color={juncaoAtivaMap[turma._id] ? "success" : "warning"}
+                          variant={juncaoAtivaMap[turma._id] ? "filled" : "outlined"}
+                          sx={{ fontSize: "0.62rem", height: 22 }}
+                        />
+                      </Tooltip>
+                    ) : (
+                      <Typography variant="caption" color="textSecondary">
+                        Não
+                      </Typography>
+                    )}
+                  </TableCell>
                   <TableCell>{turma.totalTurma}</TableCell>
                   <TableCell>{turma.diaDaSemana}</TableCell>
                   <TableCell>{turma.horarioInicio}</TableCell>

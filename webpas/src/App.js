@@ -17,6 +17,9 @@ import DistanciasWrapper from "./components/pages/distancias/distancias-wrapper.
 import SolverWrapper from "./components/pages/solver/solver-wrapper.component";
 import AgendaWrapper from "./components/pages/agenda/agenda-wrapper.component";
 import SolicitacoesWrapper from "./components/pages/solicitacoes/solicitacoes-wrapper.component";
+import ComparacaoWrapper from "./components/pages/comparacao/comparacao-wrapper.component";
+import TesteSolicitacoesWrapper from "./components/pages/teste-solicitacoes/teste-solicitacoes-wrapper.component";
+import AnaliseWrapper from "./components/pages/analise/analise-wrapper.component";
 
 const theme = createTheme({
   palette: {
@@ -111,6 +114,18 @@ function App() {
             <Route
               path="/agenda"
               element={<AgendaWrapper nav={openNav} setNav={setOpenNav} />}
+            />
+            <Route
+              path="/comparacao"
+              element={<ComparacaoWrapper nav={openNav} setNav={setOpenNav} />}
+            />
+            <Route
+              path="/teste-solicitacoes"
+              element={<TesteSolicitacoesWrapper nav={openNav} setNav={setOpenNav} />}
+            />
+            <Route
+              path="/analise"
+              element={<AnaliseWrapper nav={openNav} setNav={setOpenNav} />}
             />
           </Routes>
         </BrowserRouter>

@@ -32,20 +32,31 @@ const turmaSchema = new Schema({
   },
   solicitacao: {
     type: String,
-    enum: ["terreo", "prancheta", "qv", "qb", "lab", "esp-norte", "esp-sul"],
+    enum: [
+      "terreo",
+      "prancheta",
+      "qv",
+      "qb",
+      "lab",
+      "esp-norte",
+      "esp-sul",
+      null,
+    ],
     default: null,
   },
   departamentoOriginal: { type: String, trim: true },
 });
 
-// --- ÍNDICE COMPOSTO (A CORREÇÃO) ---
-// Garante que a turma só seja única considerando TAMBÉM o ano e semestre.
-// Isso permite SMA0300-A em 2025/1 e SMA0300-A em 2026/1.
+// --- ÍNDICE COMPOSTO ---
+// Garante unicidade por disciplina+turma+dia+horário+semestre+user.
+// Inclui codDisciplina para distinguir disciplinas diferentes com mesmo nome
+// (ex: cod 82210 e cod 1003500, ambas "CÁLCULO DIFERENCIAL E INTEGRAL 1").
 turmaSchema.index(
   {
     campus: 1,
     turma: 1,
     nomeDisciplina: 1,
+    codDisciplina: 1,
     diaDaSemana: 1,
     horarioInicio: 1,
     ano: 1,

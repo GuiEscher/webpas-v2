@@ -1,8 +1,184 @@
 const router = require('express').Router()
 let Resultado = require('../models/resultado.model')
-const { dbtomodel } = require('../solver-logic/dbtomodel')
+const { dbtomodel, gerarJanelaHorario, formatarHorarioParaDB, normalizarString } = require('../solver-logic/dbtomodel')
 const { resolve } = require('../solver-logic/gerasalahorarioglpk')
 const { trataresultado } = require('../solver-logic/trataresultado')
+const Turma = require('../models/turma.model')
+const Config = require('../models/config.model')
+const Distancia = require('../models/distancia.model')
+const { protect } = require('../middleware/auth')
+
+// =========================================================================
+// ROTA DE ANÁLISE — DECLARADA NO TOPO para não conflitar com /:ano/:semestre/:dia
+// Apenas LÊ do banco. Não afeta nenhuma rota existente.
+// =========================================================================
+const salaAtendeSolicitacaoAnalise = (salaObj, tipo) => {
+  const predio = (salaObj?.predio || "").toUpperCase();
+  const regiao = (salaObj?.regiao || "").toLowerCase();
+  switch (tipo) {
+    case "terreo":    return predio.includes("(T)");
+    case "prancheta": return predio.includes(".PR");
+    case "qv":        return predio.includes(".QV") || predio.includes("(QV)");
+    case "qb":        return predio.includes(".QB") || predio.includes("(QB)");
+    case "lab":       return predio.includes("(LAB)");
+    case "esp-norte": return regiao === "norte";
+    case "esp-sul":   return regiao === "sul";
+    default:          return true;
+  }
+};
+
+router.get('/analise/:ano/:semestre', protect, async (req, res) => {
+  try {
+    const { user } = req;
+    const ano = parseInt(req.params.ano);
+    const semestre = parseInt(req.params.semestre);
+    if (isNaN(ano) || isNaN(semestre)) {
+      return res.status(400).json({ error: 'Ano/Semestre inválidos' });
+    }
+    const minAlunos = parseInt(req.query.minAlunos) || 5;
+
+    const configs = await Config.find({ user: user._id });
+    const config = configs[0];
+    if (!config) return res.status(400).json({ error: 'Configuração não encontrada para o usuário.' });
+
+    const periodos = config.periodos || ['Manhã','Tarde','Noite'];
+    const combosValidos = new Set();
+    periodos.forEach((p) => {
+      const pc = config.horarios?.[p];
+      if (!pc) return;
+      const h1i = formatarHorarioParaDB(pc['Início'].slot1);
+      const h1f = formatarHorarioParaDB(pc['Fim'].slot1);
+      const h2i = formatarHorarioParaDB(pc['Início'].slot2);
+      const h2f = formatarHorarioParaDB(pc['Fim'].slot2);
+      gerarJanelaHorario(h1i).forEach((i) => gerarJanelaHorario(h1f).forEach((f) => combosValidos.add(i + '-' + f)));
+      gerarJanelaHorario(h2i).forEach((i) => gerarJanelaHorario(h2f).forEach((f) => combosValidos.add(i + '-' + f)));
+      gerarJanelaHorario(h1i).forEach((i) => gerarJanelaHorario(h2f).forEach((f) => combosValidos.add(i + '-' + f)));
+    });
+
+    const todasTurmas = await Turma.find({ ano, semestre, user: user._id }).lean();
+    const resultados = await Resultado.find({ ano, semestre, user: user._id }).lean();
+    const todasAlocacoes = [];
+    resultados.forEach((r) => {
+      (r.alocacoes || []).forEach((a) => todasAlocacoes.push({
+        ...a,
+        diaDaSemana: r.diaDaSemana,
+        periodo: r.periodo,
+      }));
+    });
+    const idsAlocados = new Set(todasAlocacoes.map((a) => String(a.turma?._id)));
+
+    const categorias = {
+      alocadas: [],
+      naoAlocadas: {
+        credZero: [],
+        alocadoChefia: [],
+        poucoAlunos: [],
+        horarioAtipico: [],
+        f12Pair: [],
+        juncaoAbsorvida: [],
+        solverFalhou: [],
+      },
+    };
+    const byCodTurmaDia = {};
+    todasTurmas.forEach((t) => {
+      const key = `${t.codDisciplina}|${t.turma}|${t.diaDaSemana}`;
+      (byCodTurmaDia[key] = byCodTurmaDia[key] || []).push(t);
+    });
+    const juncaoGroups = {};
+    todasTurmas.forEach((t) => {
+      if (t.juncao && Number(t.juncao) > 0) {
+        const key = `${t.juncao}_${t.codDisciplina}`;
+        (juncaoGroups[key] = juncaoGroups[key] || []).push(t);
+      }
+    });
+
+    todasTurmas.forEach((t) => {
+      if (idsAlocados.has(String(t._id))) { categorias.alocadas.push(t); return; }
+      if ((t.creditosAula || 0) <= 0) { categorias.naoAlocadas.credZero.push(t); return; }
+      if (t.alocadoChefia === true) { categorias.naoAlocadas.alocadoChefia.push(t); return; }
+      if ((t.totalTurma || 0) < minAlunos && !(Number(t.juncao) > 0)) { categorias.naoAlocadas.poucoAlunos.push(t); return; }
+      const combo = (t.horarioInicio || '') + '-' + (t.horarioFim || '');
+      if (!combosValidos.has(combo)) { categorias.naoAlocadas.horarioAtipico.push(t); return; }
+      const pairKey = `${t.codDisciplina}|${t.turma}|${t.diaDaSemana}`;
+      const pairs = (byCodTurmaDia[pairKey] || []).filter((p) => String(p._id) !== String(t._id));
+      const pairAlocada = pairs.find((p) => idsAlocados.has(String(p._id)));
+      if (pairAlocada) {
+        categorias.naoAlocadas.f12Pair.push({ ...t, pairAlocadaId: pairAlocada._id, pairHorario: `${pairAlocada.horarioInicio}-${pairAlocada.horarioFim}` });
+        return;
+      }
+      if (Number(t.juncao) > 0) {
+        const juncaoKey = `${t.juncao}_${t.codDisciplina}`;
+        const group = juncaoGroups[juncaoKey] || [];
+        const representAlocado = group.find((g) => String(g._id) !== String(t._id) && idsAlocados.has(String(g._id)));
+        if (representAlocado) {
+          categorias.naoAlocadas.juncaoAbsorvida.push({ ...t, representanteId: representAlocado._id });
+          return;
+        }
+      }
+      categorias.naoAlocadas.solverFalhou.push(t);
+    });
+
+    const solicitacoes = { atendidas: [], naoAtendidas: [] };
+    const capacidadeExcedida = [];
+    const predioAux = [];
+    todasAlocacoes.forEach((a) => {
+      const t = a.turma;
+      const s = a.sala;
+      if (!t || !s) return;
+      if (t.solicitacao) {
+        const atende = salaAtendeSolicitacaoAnalise(s, t.solicitacao);
+        if (atende) solicitacoes.atendidas.push({ alocacao: a });
+        else solicitacoes.naoAtendidas.push({ alocacao: a });
+      }
+      if ((t.totalTurma || 0) > (s.capacidade || 0)) {
+        capacidadeExcedida.push({ alocacao: a, excesso: (t.totalTurma || 0) - (s.capacidade || 0) });
+      }
+      const predioLower = (s.predio || '').toLowerCase();
+      if (predioLower.includes('predioaux') || predioLower === 'atx' || predioLower.startsWith('predio aux')) {
+        predioAux.push({ alocacao: a });
+      }
+    });
+
+    const totalElegiveis = categorias.alocadas.length + categorias.naoAlocadas.solverFalhou.length;
+    const scoreAlocacao = totalElegiveis > 0 ? (categorias.alocadas.length / totalElegiveis) * 100 : 0;
+    const totalSolicitacoes = solicitacoes.atendidas.length + solicitacoes.naoAtendidas.length;
+    const scoreSolicitacoes = totalSolicitacoes > 0 ? (solicitacoes.atendidas.length / totalSolicitacoes) * 100 : 100;
+    const scoreGeral = Math.round(((scoreAlocacao * 0.7 + scoreSolicitacoes * 0.3)) * 10) / 10;
+
+    res.json({
+      ano, semestre, minAlunos,
+      totais: {
+        turmasNoBanco: todasTurmas.length,
+        alocadas: categorias.alocadas.length,
+        totalAlocacoesGeradas: todasAlocacoes.length,
+        naoAlocadasPorMotivo: {
+          credZero: categorias.naoAlocadas.credZero.length,
+          alocadoChefia: categorias.naoAlocadas.alocadoChefia.length,
+          poucoAlunos: categorias.naoAlocadas.poucoAlunos.length,
+          horarioAtipico: categorias.naoAlocadas.horarioAtipico.length,
+          f12Pair: categorias.naoAlocadas.f12Pair.length,
+          juncaoAbsorvida: categorias.naoAlocadas.juncaoAbsorvida.length,
+          solverFalhou: categorias.naoAlocadas.solverFalhou.length,
+        },
+        solicitacoes: { total: totalSolicitacoes, atendidas: solicitacoes.atendidas.length, naoAtendidas: solicitacoes.naoAtendidas.length },
+        capacidadeExcedida: capacidadeExcedida.length,
+        predioAux: predioAux.length,
+      },
+      scores: {
+        geral: scoreGeral,
+        alocacao: Math.round(scoreAlocacao * 10) / 10,
+        solicitacoes: Math.round(scoreSolicitacoes * 10) / 10,
+      },
+      categorias,
+      solicitacoes,
+      capacidadeExcedida,
+      predioAux,
+    });
+  } catch (err) {
+    console.error('[analise] erro:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 const alocationRemove = (arr,removeArray) => { 
     let arrayTemp = []
@@ -257,5 +433,6 @@ router.route('/update/:id').post((req,res)=>{
             console.log(err)
             res.status(400).json(err)})
 })
+
 
 module.exports = router

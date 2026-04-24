@@ -187,6 +187,78 @@ async function dbtomodel(
   // 3. Buscas no Banco (Usando $in para encontrar 800 E 0800)
   // --- CORREÇÃO: Filtra turmas alocadas pela chefia E com créditos > 0 ---
 
+  // === DIAGNÓSTICO: busca TODAS as turmas do dia (sem filtros de crédito/chefia/alunos) ===
+  const todasDoDia = await Turma.find({
+    ano: ano,
+    semestre: semestre,
+    diaDaSemana: { $in: opcoesDia },
+    user: user._id,
+  });
+
+  if (todasDoDia.length > 0) {
+    const excluidas = {
+      creditosZero: [],
+      alocadoChefia: [],
+      poucoAlunos: [],
+      horarioNaoEncaixa: [],
+    };
+
+    const todosHorariosAceitos = new Set([
+      ...listaInicioF1, ...listaFimF1,
+      ...listaInicioF12, ...listaFimF12,
+      ...listaInicioF2, ...listaFimF2,
+    ]);
+
+    // Gerar sets de combinações início+fim válidas
+    const combosValidas = new Set();
+    listaInicioF1.forEach((i) => listaFimF1.forEach((f) => combosValidas.add(i + "-" + f)));
+    listaInicioF12.forEach((i) => listaFimF12.forEach((f) => combosValidas.add(i + "-" + f)));
+    listaInicioF2.forEach((i) => listaFimF2.forEach((f) => combosValidas.add(i + "-" + f)));
+
+    todasDoDia.forEach((t) => {
+      const combo = (t.horarioInicio || "") + "-" + (t.horarioFim || "");
+      if (t.creditosAula <= 0) {
+        excluidas.creditosZero.push(t);
+      } else if (t.alocadoChefia === true) {
+        excluidas.alocadoChefia.push(t);
+      } else if (t.totalTurma < minAlunos && !(t.juncao > 0)) {
+        excluidas.poucoAlunos.push(t);
+      } else if (!combosValidas.has(combo)) {
+        excluidas.horarioNaoEncaixa.push(t);
+      }
+    });
+
+    const totalExcluidas = Object.values(excluidas).reduce((s, a) => s + a.length, 0);
+    if (totalExcluidas > 0) {
+      console.log(`\n[DIAGNÓSTICO] ${periodo}/${diaDaSemana}: ${todasDoDia.length} turmas no dia, ${totalExcluidas} excluídas:`);
+      if (excluidas.creditosZero.length > 0) {
+        console.log(`  ❌ creditosAula=0: ${excluidas.creditosZero.length}`);
+        excluidas.creditosZero.slice(0, 5).forEach((t) =>
+          console.log(`     → ${t.horario_id || t.idTurma} "${t.nomeDisciplina}" turma=${t.turma} cred=${t.creditosAula}`),
+        );
+      }
+      if (excluidas.alocadoChefia.length > 0) {
+        console.log(`  ❌ alocadoChefia=true: ${excluidas.alocadoChefia.length}`);
+        excluidas.alocadoChefia.slice(0, 5).forEach((t) =>
+          console.log(`     → ${t.horario_id || t.idTurma} "${t.nomeDisciplina}" turma=${t.turma}`),
+        );
+      }
+      if (excluidas.poucoAlunos.length > 0) {
+        console.log(`  ❌ totalTurma<${minAlunos} (sem junção): ${excluidas.poucoAlunos.length}`);
+        excluidas.poucoAlunos.slice(0, 5).forEach((t) =>
+          console.log(`     → ${t.horario_id || t.idTurma} "${t.nomeDisciplina}" turma=${t.turma} total=${t.totalTurma}`),
+        );
+      }
+      if (excluidas.horarioNaoEncaixa.length > 0) {
+        console.log(`  ❌ horário não encaixa no período ${periodo}: ${excluidas.horarioNaoEncaixa.length}`);
+        excluidas.horarioNaoEncaixa.slice(0, 5).forEach((t) =>
+          console.log(`     → ${t.horario_id || t.idTurma} "${t.nomeDisciplina}" turma=${t.turma} ${t.horarioInicio}-${t.horarioFim}`),
+        );
+      }
+    }
+  }
+  // === FIM DIAGNÓSTICO ===
+
   let rawTurmasF1 = await Turma.find({
     ano: ano,
     semestre: semestre,
@@ -234,8 +306,7 @@ async function dbtomodel(
   const isSameClass = (t1, t2) => {
     return (
       t1.codDisciplina === t2.codDisciplina &&
-      t1.turma === t2.turma &&
-      t1.docentes === t2.docentes
+      t1.turma === t2.turma
     );
   };
 
@@ -273,13 +344,11 @@ async function dbtomodel(
   rawTurmasF12.forEach((t) => modelo.turmasf12.push(t));
 
   // ==========================================================================
-  // LÓGICA DE JUNÇÃO (MESMA SALA PARA TURMAS COM MESMO CÓDIGO + HORÁRIO)
+  // LÓGICA DE JUNÇÃO
   // ==========================================================================
-  // Turmas com juncao > 0, mesmo codDisciplina e mesmo horarioInicio são
-  // agrupadas. A primeira turma (representante) recebe a soma de totalTurma
-  // de todas as turmas do grupo. As demais são removidas do solver e
-  // armazenadas em modelo.juncaoTurmas para receberem a mesma sala após
-  // a otimização (propagação feita em trataresultado.js).
+  // Turmas com juncao > 0 são agrupadas pelo código de junção (juncao_id no
+  // CSV). A turma representante permanece no solver e recebe a soma de alunos.
+  // As demais turmas do grupo são removidas do solver.
   // ==========================================================================
 
   modelo.juncaoTurmas = [];
@@ -288,10 +357,11 @@ async function dbtomodel(
     const juncaoGroups = {};
     const turmasFinais = [];
 
-    // Agrupa turmas com juncao > 0 por codDisciplina + horarioInicio
+    // Agrupa turmas com juncao > 0 usando juncao_id + codDisciplina.
+    // Isso tolera variações de horário no CSV e mantém a intenção da junção.
     turmaArray.forEach((turma) => {
       if (turma.juncao && turma.juncao > 0) {
-        const key = `${turma.codDisciplina}_${turma.horarioInicio}`;
+        const key = `${turma.juncao}_${turma.codDisciplina}`;
         if (!juncaoGroups[key]) {
           juncaoGroups[key] = [];
         }
@@ -309,7 +379,13 @@ async function dbtomodel(
         return;
       }
 
-      // Primeira turma = representante do grupo
+      // Representante estável: menor letra de turma (A antes de B, etc.)
+      group.sort((a, b) =>
+        String(a.turma || "").localeCompare(String(b.turma || ""), "pt-BR", {
+          sensitivity: "base",
+        }),
+      );
+
       const representante = group[0];
       let totalSomado = representante.totalTurma;
 
@@ -426,3 +502,6 @@ async function dbtomodel(
 }
 
 exports.dbtomodel = dbtomodel;
+exports.gerarJanelaHorario = gerarJanelaHorario;
+exports.formatarHorarioParaDB = formatarHorarioParaDB;
+exports.normalizarString = normalizarString;

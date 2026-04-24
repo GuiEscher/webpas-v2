@@ -16,11 +16,11 @@ const DrawerHeader = styled('div')(({ theme }) => ({
     ...theme.mixins.toolbar,
   }));
   
-  const containerStyle = {
-    '@media (min-width: 1400px)': {
-      maxWidth: '1400px'
-    }
-  }
+const containerStyle = {
+  width: "100%",
+  maxWidth: "1900px !important",
+  px: { xs: 0.5, md: 1.5 },
+};
 
 const TurmasWrapper = props =>{
     const {user,logout} = useAuth()
@@ -53,7 +53,7 @@ const TurmasWrapper = props =>{
         <Navbar open={nav} setOpen={setNav}/>
         <Box component="main" sx={{ flexGrow: 1, p: 3}}>
             <DrawerHeader />
-            <Container sx={containerStyle}>
+            <Container maxWidth={false} sx={containerStyle}>
               <TurmasList config={config} user={user} logout={logout}/>
             </Container>
         </Box>

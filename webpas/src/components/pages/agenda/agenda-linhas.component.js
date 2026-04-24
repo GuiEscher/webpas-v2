@@ -70,6 +70,11 @@ const AgendaLinhas = (props) => {
     setTableObj(sortAlocacoes(tableObjs));
   };
 
+  const formatTurmaComJuncao = (turmaObj) => {
+    const turmaLabel = turmaObj?.turma || "";
+    return Number(turmaObj?.juncao) > 0 ? `${turmaLabel} (J)` : turmaLabel;
+  };
+
   return (
     <>
       <Box>
@@ -145,7 +150,7 @@ const AgendaLinhas = (props) => {
                         {state.turma && obj[horario] ? (
                           <>
                             <Typography sx={tableRowCss}>
-                              {obj[horario].turma}
+                              {formatTurmaComJuncao(obj[horario])}
                             </Typography>
                           </>
                         ) : (

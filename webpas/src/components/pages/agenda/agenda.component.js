@@ -39,6 +39,8 @@ import AgendaCampos from "./agenda-campos.component";
 import TrocaSalaForm from "../../forms/trocaSalaForm.component";
 import ExportarResultadoForm from "../../forms/exportarResultadoForm.component";
 import ResultadosDataService from "../../../services/resultados";
+import Analise from "../analise/analise.component";
+import AssessmentIcon from "@mui/icons-material/Assessment";
 
 // --- STYLES & HELPERS ---
 function TabPanel(props) {
@@ -225,7 +227,10 @@ const Agenda = (props) => {
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
-    setDia(config.dias[newValue]);
+    // Aba de Análise (última) não altera o dia da semana
+    if (newValue < config.dias.length) {
+      setDia(config.dias[newValue]);
+    }
   };
 
   const handleFormato = (event, novoFormato) => {
@@ -555,12 +560,29 @@ const Agenda = (props) => {
                 }}
               />
             ))}
+            <Tab
+              key="__analise__"
+              icon={<AssessmentIcon fontSize="small" />}
+              iconPosition="start"
+              label="Análise"
+              sx={{
+                textTransform: "none",
+                fontWeight: 600,
+                fontSize: "1rem",
+                ml: "auto",
+              }}
+            />
           </Tabs>
         </Box>
 
         <TableContainer sx={{ minHeight: 400 }}>
           <Box sx={{ p: 0 }}>
-            {formatoAgenda === "colunas" ? (
+            {tabValue === config.dias.length ? (
+              // Tab de Análise
+              <Box sx={{ p: 2 }}>
+                <Analise embedded ano={ano} semestre={semestre} minAlunos={5} />
+              </Box>
+            ) : formatoAgenda === "colunas" ? (
               <AgendaColunas
                 state={state}
                 horariosInicio={horariosInicio}

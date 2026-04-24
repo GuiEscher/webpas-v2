@@ -23,31 +23,9 @@ async function trataresultado(modelo, resultado) {
   });
 
   // ==========================================================================
-  // PROPAGAÇÃO DE JUNÇÃO: turmas unidas recebem a mesma sala do representante
+  // JUNÇÃO NO RESULTADO:
+  // Mantém apenas a turma representante no resultado final/export.
   // ==========================================================================
-  if (modelo.juncaoTurmas && modelo.juncaoTurmas.length > 0) {
-    const alocacoesJuncao = [];
-    alocacoesTratadas.forEach((alocacao) => {
-      if (!alocacao.turma || !alocacao.turma._id) return;
-      const turmaId = alocacao.turma._id.toString();
-      modelo.juncaoTurmas.forEach((jt) => {
-        if (jt.representanteId === turmaId) {
-          alocacoesJuncao.push({
-            turma: jt.turmaJoined,
-            sala: alocacao.sala,
-            horarioSlot: alocacao.horarioSlot,
-            juncao: true,
-          });
-        }
-      });
-    });
-    if (alocacoesJuncao.length > 0) {
-      console.log(
-        `[trataresultado] 🔗 Junção: ${alocacoesJuncao.length} alocação(ões) propagada(s)`,
-      );
-      alocacoesTratadas = alocacoesTratadas.concat(alocacoesJuncao);
-    }
-  }
 
   return alocacoesTratadas;
 }

@@ -8,6 +8,41 @@ const { Readable } = require("stream");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+const normalizeCsvHeader = (header = "") =>
+  String(header)
+    .trim()
+    .replace(/'/g, "")
+    .replace(/"/g, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/_+/g, "_");
+
+const normalizeCsvValue = (value) =>
+  String(value ?? "")
+    .trim()
+    .replace(/'/g, "")
+    .replace(/"/g, "");
+
+const normalizeText = (value = "") =>
+  String(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+const normalizeCampusValue = (campus, fallback = "São Carlos") => {
+  const campusLimpo = normalizeCsvValue(campus);
+  const campusNormalizado = normalizeText(campusLimpo);
+
+  if (campusNormalizado.includes("sorocaba")) return "Sorocaba";
+  if (campusNormalizado.includes("sao carlos")) return "São Carlos";
+  if (campusLimpo) return campusLimpo;
+
+  return fallback;
+};
+
 // --- ROTA DE UPLOAD CSV ---
 router.post("/upload-csv", protect, upload.single("file"), async (req, res) => {
   console.log("--- ROTA /upload-csv ACIONADA ---");
@@ -53,8 +88,7 @@ router.post("/upload-csv", protect, upload.single("file"), async (req, res) => {
     .pipe(
       csv({
         separator: separator,
-        mapHeaders: ({ header }) =>
-          header.trim().replace(/'/g, "").replace(/"/g, "").toLowerCase(),
+        mapHeaders: ({ header }) => normalizeCsvHeader(header),
       }),
     )
     .on("data", (row) => {
@@ -62,19 +96,98 @@ router.post("/upload-csv", protect, upload.single("file"), async (req, res) => {
       try {
         let novaTurma = {};
 
+        const getRowValue = (...aliases) => {
+          for (const alias of aliases) {
+            const value = row[alias];
+            if (value === undefined || value === null) continue;
+
+            const valueStr = normalizeCsvValue(value);
+            const valueLower = valueStr.toLowerCase();
+            if (
+              valueStr === "" ||
+              valueLower === "null" ||
+              valueLower === "(null)"
+            ) {
+              continue;
+            }
+            return valueStr;
+          }
+          return undefined;
+        };
+
+        const codDiscip = getRowValue(
+          "cod_discip",
+          "cod_disciplina",
+          "codigo_disciplina",
+          "codigo_discip",
+          "coddisciplina",
+        );
+        const nomeDisciplina = getRowValue("nome", "nome_disciplina", "disciplina");
+        const campusCsv = getRowValue("campus", "nome_campus");
+        const departamento = getRowValue(
+          "departamento",
+          "departamento_turma",
+          "depto",
+          "departamento_oferta",
+        );
+        const totalVagas = getRowValue(
+          "numero_vagas",
+          "inscricoes_mais_vagas_calouros",
+          "total_vagas",
+          "vagas",
+        );
+        const diaSemana = getRowValue("dia", "dia_da_semana");
+        const horaInicio = getRowValue(
+          "hora_inicio",
+          "horario_inicio",
+          "hora_inicial",
+        );
+        const horaFim = getRowValue(
+          "hora_fim",
+          "hora_termino",
+          "horario_fim",
+          "horario_termino",
+        );
+        const credAula = getRowValue(
+          "cred_aula",
+          "credito_aula",
+          "creditos_aula",
+        );
+        const ministrantes = getRowValue(
+          "ministrantes",
+          "docentes",
+          "professores",
+        );
+        const juncaoHorario = getRowValue(
+          "juncao_id",
+          "juncao_horario_id",
+          "juncao_horario",
+          "juncao",
+        );
+        const tipoQuadroCsv = getRowValue(
+          "tipo_quadro",
+          "tipoquadro",
+          "tipo_lousa",
+          "quadro",
+        );
+
         // --- 1. CORREÇÃO: Turma Vazia vira 'A' ---
-        let letraTurma = row["turma"];
+        let letraTurma = getRowValue("turma", "letra_turma");
         if (
           !letraTurma ||
           String(letraTurma).trim() === "" ||
           String(letraTurma).toLowerCase() === "null"
         ) {
-          let letraTurma = "A";
+          letraTurma = "A";
         }
 
         // --- 2. CORREÇÃO: Alocado Chefia (true, t, 1, sim) ---
         let isAlocadoChefia = false;
-        const rawAlocado = row["alocado_chefia"];
+        const rawAlocado = getRowValue(
+          "alocado_chefia",
+          "chefia_alocada",
+          "aloc_chefia",
+        );
         if (rawAlocado) {
           const val = String(rawAlocado).trim().toLowerCase();
           if (["true", "t", "1", "sim", "s", "yes", "y"].includes(val)) {
@@ -85,39 +198,22 @@ router.post("/upload-csv", protect, upload.single("file"), async (req, res) => {
         // --- 3. NOVA CORREÇÃO: Leitura do Horário ID ---
         // Tenta ler de várias formas comuns caso o cabeçalho varie um pouco
         const horarioIdValue =
-          row["horario_id"] ||
-          row["horarioid"] ||
-          row["id_horario"] ||
+          getRowValue("horario_id", "horarioid", "id_horario", "idhorario") ||
           undefined;
         // -----------------------------------------------
 
         // --- LÓGICA POR CAMPUS ---
         if (campusSelecionado === "Sorocaba") {
-          if (!row["cod_discip"] && !row["nome"]) return;
+          if (!codDiscip && !nomeDisciplina) return;
 
           // Tratamento de Campus (Null vira Sorocaba)
-          let campusValue = row["campus"];
-          const campusCheck = String(campusValue || "")
-            .trim()
-            .toLowerCase();
-          if (
-            !campusValue ||
-            campusCheck === "" ||
-            campusCheck === "null" ||
-            campusCheck === "(null)"
-          ) {
-            campusValue = "Sorocaba";
-          }
+          const campusValue = normalizeCampusValue(campusCsv, "Sorocaba");
 
-          const hInicio = row["hora_inicio"]
-            ? String(Number(row["hora_inicio"]))
-            : "0";
-          const hFim = row["hora_termino"]
-            ? String(Number(row["hora_termino"]))
-            : "0";
+          const hInicio = horaInicio ? String(Number(horaInicio)) : "0";
+          const hFim = horaFim ? String(Number(horaFim)) : "0";
 
           novaTurma = {
-            idTurma: `${row["cod_discip"] || ""}-${letraTurma}`,
+            idTurma: `${codDiscip || ""}-${letraTurma}`,
             campus: campusValue,
 
             // INSERIDO AQUI
@@ -125,48 +221,50 @@ router.post("/upload-csv", protect, upload.single("file"), async (req, res) => {
               ? String(horarioIdValue).trim()
               : undefined,
 
-            departamentoTurma: row["departamento"] || "N/A",
-            codDisciplina: row["cod_discip"] || "N/A",
+            departamentoTurma: departamento || "N/A",
+            codDisciplina: codDiscip || "N/A",
             turma: letraTurma,
-            nomeDisciplina: row["nome"] || "N/A",
-            totalTurma: Number(row["numero_vagas"]) || 0,
-            departamentoOferta: row["departamento"] || "N/A",
-            diaDaSemana: row["dia"] || "N/A",
+            nomeDisciplina: nomeDisciplina || "N/A",
+            totalTurma: Number(totalVagas) || 0,
+            departamentoOferta: departamento || "N/A",
+            diaDaSemana: diaSemana || "N/A",
             horarioInicio: hInicio,
             horarioFim: hFim,
-            creditosAula: Number(row["cred_aula"]) || 0,
-            docentes: row["ministrantes"] || "N/A",
+            creditosAula: Number(credAula) || 0,
+            docentes: ministrantes || "N/A",
             ano: Number(ano),
             semestre: Number(semestre),
             user: userId,
             alocadoChefia: isAlocadoChefia,
-            tipoQuadro: "Indiferente",
-            juncao: Number(row["juncao_id"]) || 0,
+            tipoQuadro: (() => {
+              if (!tipoQuadroCsv) return "Indiferente";
+              const val = normalizeText(tipoQuadroCsv);
+              if (val.includes("verde") || val === "qv") return "Verde";
+              if (val.includes("branco") || val === "qb") return "Branco";
+              return "Indiferente";
+            })(),
+            juncao: Number(juncaoHorario) || 0,
           };
 
           // Log de debug (apenas primeira linha)
           if (linhaCount === 1) {
             console.log(
-              `[DEBUG SOROCABA] Primeira turma - ano: ${novaTurma.ano}, semestre: ${novaTurma.semestre}, turma: ${novaTurma.turma}, nome: ${novaTurma.nomeDisciplina}`,
+              `[DEBUG SOROCABA] Primeira turma - ano: ${novaTurma.ano}, semestre: ${novaTurma.semestre}, turma: ${novaTurma.turma}, nome: ${novaTurma.nomeDisciplina}, tipoQuadro: ${novaTurma.tipoQuadro}`,
             );
           }
         } else {
           // São Carlos
           if (
-            (!row["cod_discip"] || row["cod_discip"] === "") &&
-            (!row["nome"] || row["nome"] === "")
+            (!codDiscip || codDiscip === "") &&
+            (!nomeDisciplina || nomeDisciplina === "")
           )
             return;
 
-          const hInicioSC = row["hora_inicio"]
-            ? String(Number(row["hora_inicio"]))
-            : "0";
-          const hFimSC = row["hora_fim"]
-            ? String(Number(row["hora_fim"]))
-            : "0";
+          const hInicioSC = horaInicio ? String(Number(horaInicio)) : "0";
+          const hFimSC = horaFim ? String(Number(horaFim)) : "0";
 
           novaTurma = {
-            idTurma: `${row["cod_discip"] || ""}-${letraTurma}`,
+            idTurma: `${codDiscip || ""}-${letraTurma}`,
             campus: "São Carlos",
 
             // INSERIDO AQUI TAMBÉM
@@ -174,23 +272,23 @@ router.post("/upload-csv", protect, upload.single("file"), async (req, res) => {
               ? String(horarioIdValue).trim()
               : undefined,
 
-            departamentoTurma: row["departamento"] || "N/A",
-            codDisciplina: row["cod_discip"] || "N/A",
+            departamentoTurma: departamento || "N/A",
+            codDisciplina: codDiscip || "N/A",
             turma: letraTurma,
-            nomeDisciplina: row["nome"] || "N/A",
-            totalTurma: Number(row["numero_vagas"]) || 0,
-            departamentoOferta: row["departamento"] || "N/A",
-            diaDaSemana: row["dia"] || "N/A",
+            nomeDisciplina: nomeDisciplina || "N/A",
+            totalTurma: Number(totalVagas) || 0,
+            departamentoOferta: departamento || "N/A",
+            diaDaSemana: diaSemana || "N/A",
             horarioInicio: hInicioSC,
             horarioFim: hFimSC,
-            creditosAula: Number(row["cred_aula"]) || 0,
-            docentes: row["ministrantes"] || "N/A",
+            creditosAula: Number(credAula) || 0,
+            docentes: ministrantes || "N/A",
             ano: Number(ano),
             semestre: Number(semestre),
             user: userId,
             alocadoChefia: isAlocadoChefia,
             tipoQuadro: "Indiferente",
-            juncao: Number(row["juncao_id"]) || 0,
+            juncao: Number(juncaoHorario) || 0,
           };
 
           // Log de debug (apenas primeira linha)
@@ -226,26 +324,38 @@ router.post("/upload-csv", protect, upload.single("file"), async (req, res) => {
           `[ERRO NO INSERTMANY] code: ${error.code}, writeErrors: ${error.writeErrors?.length || 0}`,
         );
 
-        if (
-          error.code === 11000 ||
-          (error.writeErrors && error.writeErrors.length > 0)
-        ) {
-          const duplicados = error.writeErrors ? error.writeErrors.length : 0;
-          const salvos = turmasParaSalvar.length - duplicados;
+        if (error.code === 11000 || error.writeErrors?.length) {
+          const writeErrors = error.writeErrors || [];
+          const duplicados = writeErrors.filter((we) => we.code === 11000).length;
+          const invalidos = writeErrors.length - duplicados;
+          const salvos = turmasParaSalvar.length - writeErrors.length;
 
-          // Log da primeira duplicação para debug
-          if (error.writeErrors && error.writeErrors.length > 0) {
+          if (writeErrors.length > 0) {
             const primeiraKey =
-              error.writeErrors[0].err?.keyValue ||
-              error.writeErrors[0].err?.op;
-            console.log(
-              `[DEBUG DUPLICAÇÃO] Primeira chave duplicada:`,
-              primeiraKey,
+              writeErrors[0].err?.keyValue ||
+              writeErrors[0].err?.op ||
+              writeErrors[0].errmsg;
+            console.log(`[DEBUG INSERT ERROR] Primeiro erro:`, primeiraKey);
+          }
+
+          if (salvos <= 0 && invalidos > 0 && duplicados === 0) {
+            return res.status(400).json({
+              msg: `Nenhuma turma foi salva. Verifique o formato/validação do arquivo (${invalidos} linha(s) inválida(s)).`,
+            });
+          }
+
+          let detalhes = [];
+          if (duplicados > 0) {
+            detalhes.push(
+              `${duplicados} já existiam no ano/semestre ${ano}/${semestre}`,
             );
+          }
+          if (invalidos > 0) {
+            detalhes.push(`${invalidos} linha(s) inválida(s)`);
           }
 
           return res.status(201).json({
-            msg: `Upload parcial: ${salvos} novas turmas salvas. (${duplicados} já existiam no ano/semestre ${ano}/${semestre}).`,
+            msg: `Upload parcial: ${salvos} novas turmas salvas. (${detalhes.join(" | ")}).`,
           });
         }
         res
@@ -336,10 +446,19 @@ router.route("/d/").get(protect, (req, res) => {
 });
 
 router.route("/:ano/:semestre").get(protect, (req, res) => {
+  const anoParam = Number(req.params.ano);
+  const semestreParam = Number(req.params.semestre);
+
+  const valoresAno = [req.params.ano];
+  const valoresSemestre = [req.params.semestre];
+
+  if (!Number.isNaN(anoParam)) valoresAno.push(anoParam);
+  if (!Number.isNaN(semestreParam)) valoresSemestre.push(semestreParam);
+
   Turma.find({
-    ano: req.params.ano,
-    semestre: req.params.semestre,
     user: req.user._id,
+    ano: { $in: valoresAno },
+    semestre: { $in: valoresSemestre },
   })
     .then((turmas) => res.json(turmas))
     .catch((err) => res.json(err));
@@ -612,6 +731,169 @@ router.post("/limpar-departamentos-fake", protect, async (req, res) => {
   } catch (error) {
     console.error("Erro ao limpar departamentos fake:", error);
     res.status(500).json({ msg: "Erro interno ao limpar departamentos fake." });
+  }
+});
+
+// === ROTA DE DIAGNÓSTICO: turmas que NÃO seriam alocadas pelo solver ===
+router.get("/diagnostico/:ano/:semestre", protect, async (req, res) => {
+  try {
+    const user = req.user;
+    const ano = parseInt(req.params.ano);
+    const semestre = parseInt(req.params.semestre);
+    if (isNaN(ano) || isNaN(semestre))
+      return res.status(400).json({ error: "Ano/Semestre inválidos" });
+
+    const todas = await Turma.find({
+      ano,
+      semestre,
+      user: user._id,
+    }).lean();
+
+    const minAlunos = 5; // default
+
+    const diagnostico = {
+      total: todas.length,
+      alocaveis: 0,
+      excluidas: {
+        creditosZero: [],
+        alocadoChefia: [],
+        poucoAlunos: [],
+        semHorarioId: [],
+      },
+    };
+
+    todas.forEach((t) => {
+      const info = {
+        _id: t._id,
+        horario_id: t.horario_id || "",
+        idTurma: t.idTurma,
+        nomeDisciplina: t.nomeDisciplina,
+        codDisciplina: t.codDisciplina,
+        turma: t.turma,
+        diaDaSemana: t.diaDaSemana,
+        horarioInicio: t.horarioInicio,
+        horarioFim: t.horarioFim,
+        totalTurma: t.totalTurma,
+        creditosAula: t.creditosAula,
+        alocadoChefia: t.alocadoChefia,
+        juncao: t.juncao,
+        campus: t.campus,
+      };
+
+      if ((t.creditosAula || 0) <= 0) {
+        diagnostico.excluidas.creditosZero.push(info);
+      } else if (t.alocadoChefia === true) {
+        diagnostico.excluidas.alocadoChefia.push(info);
+      } else if (
+        (t.totalTurma || 0) < minAlunos &&
+        !((t.juncao || 0) > 0)
+      ) {
+        diagnostico.excluidas.poucoAlunos.push(info);
+      } else {
+        diagnostico.alocaveis++;
+        if (!t.horario_id) {
+          diagnostico.excluidas.semHorarioId.push(info);
+        }
+      }
+    });
+
+    diagnostico.resumo = {
+      creditosZero: diagnostico.excluidas.creditosZero.length,
+      alocadoChefia: diagnostico.excluidas.alocadoChefia.length,
+      poucoAlunos: diagnostico.excluidas.poucoAlunos.length,
+      semHorarioId: diagnostico.excluidas.semHorarioId.length,
+    };
+
+    res.json(diagnostico);
+  } catch (err) {
+    console.error("Erro no diagnóstico:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =========================================================================
+// ROTAS DE TESTE (podem ser removidas depois) — aplicar solicitações em lote
+// =========================================================================
+
+// Aplica solicitações a múltiplas turmas. Body: { ano, semestre, solicitacoes: [{horario_id, tipo}] }
+router.post("/teste/aplicar-solicitacoes-lote", protect, async (req, res) => {
+  try {
+    const user = req.user;
+    const { ano, semestre, solicitacoes } = req.body;
+    if (!Array.isArray(solicitacoes) || solicitacoes.length === 0) {
+      return res.status(400).json({ msg: "Lista de solicitações vazia." });
+    }
+    if (!ano || !semestre) {
+      return res.status(400).json({ msg: "ano e semestre são obrigatórios." });
+    }
+
+    const tiposValidos = new Set([
+      "terreo",
+      "prancheta",
+      "qv",
+      "qb",
+      "lab",
+      "esp-norte",
+      "esp-sul",
+    ]);
+
+    let aplicadas = 0;
+    let naoEncontradas = [];
+    let tipoInvalido = [];
+
+    for (const s of solicitacoes) {
+      const horarioId = String(s.horario_id || "").trim();
+      const tipo = String(s.tipo || "").trim();
+      if (!horarioId || !tiposValidos.has(tipo)) {
+        tipoInvalido.push({ horario_id: horarioId, tipo });
+        continue;
+      }
+      const result = await Turma.updateOne(
+        {
+          horario_id: horarioId,
+          ano: Number(ano),
+          semestre: Number(semestre),
+          user: user._id,
+        },
+        { $set: { solicitacao: tipo } },
+      );
+      if (result.matchedCount > 0) aplicadas++;
+      else naoEncontradas.push(horarioId);
+    }
+
+    res.json({
+      aplicadas,
+      naoEncontradas: naoEncontradas.length,
+      tipoInvalido: tipoInvalido.length,
+      detalhes: { naoEncontradas, tipoInvalido },
+    });
+  } catch (err) {
+    console.error("[teste/aplicar-solicitacoes-lote]", err);
+    res.status(500).json({ msg: "Erro ao aplicar solicitações.", error: err.message });
+  }
+});
+
+// Limpa solicitações de um período. Body: { ano, semestre }
+router.post("/teste/limpar-solicitacoes-lote", protect, async (req, res) => {
+  try {
+    const user = req.user;
+    const { ano, semestre } = req.body;
+    if (!ano || !semestre) {
+      return res.status(400).json({ msg: "ano e semestre são obrigatórios." });
+    }
+    const result = await Turma.updateMany(
+      {
+        ano: Number(ano),
+        semestre: Number(semestre),
+        user: user._id,
+        solicitacao: { $ne: null },
+      },
+      { $set: { solicitacao: null } },
+    );
+    res.json({ limpas: result.modifiedCount });
+  } catch (err) {
+    console.error("[teste/limpar-solicitacoes-lote]", err);
+    res.status(500).json({ msg: "Erro ao limpar solicitações.", error: err.message });
   }
 });
 
