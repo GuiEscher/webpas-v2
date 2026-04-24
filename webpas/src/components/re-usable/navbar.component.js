@@ -22,6 +22,9 @@ import DirectionsWalkIcon from "@mui/icons-material/DirectionsWalk";
 import CalculateIcon from "@mui/icons-material/Calculate";
 import DateRangeIcon from "@mui/icons-material/DateRange";
 import SettingsIcon from "@mui/icons-material/Settings";
+import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
+import ScienceIcon from "@mui/icons-material/Science";
+import AssessmentIcon from "@mui/icons-material/Assessment";
 import { Grid } from "@mui/material";
 import {
   Link as RouterLink,
@@ -235,6 +238,16 @@ const Navbar = (props) => {
             to="/agenda"
             primary="Resultado"
             icon={<DateRangeIcon />}
+          />
+          <ListItemLink
+            to="/comparacao"
+            primary="Comparar"
+            icon={<CompareArrowsIcon />}
+          />
+          <ListItemLink
+            to="/teste-solicitacoes"
+            primary="TESTE Solicitações"
+            icon={<ScienceIcon />}
           />
           <ListItemLink
             to="/config"

@@ -32,6 +32,73 @@ const formCssClass = {
   },
 };
 
+const compareTurmaCode = (turmaA, turmaB) => {
+  return String(turmaA || "").localeCompare(String(turmaB || ""), "pt-BR", {
+    sensitivity: "base",
+    numeric: true,
+  });
+};
+
+const getJuncaoExportKey = (alocacao) => {
+  const turma = alocacao?.turma;
+  const juncaoId = Number(turma?.juncao) || 0;
+  if (juncaoId <= 0) return "";
+
+  return [
+    turma?.campus || "",
+    turma?.codDisciplina || "",
+    turma?.diaDaSemana || "",
+    turma?.horarioInicio || "",
+    turma?.horarioFim || "",
+    alocacao?.horario || "",
+    juncaoId,
+  ].join("|");
+};
+
+const consolidarAlocacoesJuncao = (alocacoesOriginais) => {
+  if (!Array.isArray(alocacoesOriginais) || alocacoesOriginais.length === 0) {
+    return [];
+  }
+
+  const representantePorGrupo = new Map();
+
+  alocacoesOriginais.forEach((alocacao) => {
+    const key = getJuncaoExportKey(alocacao);
+    if (!key) return;
+
+    const atual = representantePorGrupo.get(key);
+    if (!atual) {
+      representantePorGrupo.set(key, alocacao);
+      return;
+    }
+
+    if (
+      compareTurmaCode(alocacao?.turma?.turma, atual?.turma?.turma) < 0
+    ) {
+      representantePorGrupo.set(key, alocacao);
+    }
+  });
+
+  const gruposInseridos = new Set();
+  const alocacoesConsolidadas = [];
+
+  alocacoesOriginais.forEach((alocacao) => {
+    const key = getJuncaoExportKey(alocacao);
+
+    if (!key) {
+      alocacoesConsolidadas.push(alocacao);
+      return;
+    }
+
+    if (!gruposInseridos.has(key)) {
+      alocacoesConsolidadas.push(representantePorGrupo.get(key) || alocacao);
+      gruposInseridos.add(key);
+    }
+  });
+
+  return alocacoesConsolidadas;
+};
+
 const ExportarResultadoForm = (props) => {
   const {
     ano,
@@ -68,7 +135,7 @@ const ExportarResultadoForm = (props) => {
         });
       });
 
-      setAlocacoes(alocacoesTemp);
+      setAlocacoes(consolidarAlocacoesJuncao(alocacoesTemp));
     } else {
       setAlocacoes([]);
     }

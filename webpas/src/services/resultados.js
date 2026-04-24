@@ -25,6 +25,10 @@ class ResultadosDataService {
     trocaSala(data,id){
         return http.post(`resultados/update/${id}`,data)
     }
+
+    getAnalise(ano, semestre, minAlunos = 5) {
+        return http.get(`resultados/analise/${ano}/${semestre}?minAlunos=${minAlunos}`);
+    }
     deleteByAnoSemestre = (ano, semestre) => {
     const url = `http://localhost:5000/resultados/delete/${ano}/${semestre}`;
     console.log('URL DELETE gerada:', url);

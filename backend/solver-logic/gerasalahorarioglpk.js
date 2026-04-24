@@ -75,7 +75,7 @@ async function resolve(modelo, delta, mipGap, tmLim) {
       // Para norte/sul, usa o campo regiao da sala.
       // =================================================================
       const solicitacao = turma.solicitacao;
-      if (solicitacao && distValue < placeholder) {
+      if (solicitacao) {
         let salaAtende = true;
         const predioUpper = (sala.predio || "").toUpperCase();
         const distAntes = distValue;
@@ -91,10 +91,12 @@ async function resolve(modelo, delta, mipGap, tmLim) {
             salaAtende = predioUpper.includes("(LAB)");
             break;
           case "qv":
-            salaAtende = predioUpper.includes(".QV");
+            salaAtende =
+              predioUpper.includes(".QV") || predioUpper.includes("(QV)");
             break;
           case "qb":
-            salaAtende = predioUpper.includes(".QB");
+            salaAtende =
+              predioUpper.includes(".QB") || predioUpper.includes("(QB)");
             break;
           case "esp-norte":
             salaAtende = (sala.regiao || "").toLowerCase() === "norte";
@@ -107,7 +109,8 @@ async function resolve(modelo, delta, mipGap, tmLim) {
         }
 
         if (!salaAtende) {
-          distValue = placeholder; // Penalidade alta: solver evitará essa sala
+          // Mantém preferência por salas aderentes mesmo quando a distância base é placeholder.
+          distValue += placeholder;
         }
 
         // --- DEBUG DETALHADO: primeira sala de cada turma com solicitação ---
@@ -130,6 +133,49 @@ async function resolve(modelo, delta, mipGap, tmLim) {
         console.log(
           `  📋 RESUMO: Turma="${turma.nomeDisciplina}" tem solicitacao="${solicitacao}"`,
         );
+      }
+
+      // =================================================================
+      // PENALIDADE POR tipoQuadro (SOROCABA APENAS)
+      // O toggle Verde/Branco na lista de turmas salva turma.tipoQuadro.
+      // Só é considerado para turmas do campus Sorocaba.
+      // =================================================================
+      const tipoQuadro = turma.tipoQuadro;
+      const campusTurma = (turma.campus || "").toLowerCase();
+      if (
+        tipoQuadro &&
+        tipoQuadro !== "Indiferente" &&
+        campusTurma.includes("sorocaba")
+      ) {
+        const predioUpper = (sala.predio || "").toUpperCase();
+        const salaQuadro = sala.tipoQuadro || "Indiferente";
+        let salaAtendeQuadro = false;
+
+        if (tipoQuadro === "Verde") {
+          salaAtendeQuadro =
+            predioUpper.includes(".QV") ||
+            predioUpper.includes("(QV)") ||
+            salaQuadro === "Verde";
+        } else if (tipoQuadro === "Branco") {
+          salaAtendeQuadro =
+            predioUpper.includes(".QB") ||
+            predioUpper.includes("(QB)") ||
+            salaQuadro === "Branco";
+        }
+
+        if (!salaAtendeQuadro) {
+          distValue += placeholder;
+        }
+
+        if (salaIdx === 0) {
+          console.log(
+            `\n🎨 TIPO QUADRO (Sorocaba):`,
+            `\n  Turma: "${turma.nomeDisciplina}" (${turma.idTurma})`,
+            `\n  tipoQuadro: "${tipoQuadro}"`,
+            `\n  Sala prédio: "${sala.predio}", sala.tipoQuadro: "${salaQuadro}"`,
+            `\n  Atende? ${salaAtendeQuadro ? "✅ SIM" : "❌ NÃO"}`,
+          );
+        }
       }
 
       return distValue;
@@ -172,8 +218,9 @@ async function resolve(modelo, delta, mipGap, tmLim) {
         indiceResult++;
       }
     }
-    // Vars para H2 (F2) - CORREÇÃO: Start index correto para F2 (após F1 + F12)
-    for (let i = turmasF1.length + turmasF12.length; i < turmas.length; i++) {
+    // Vars para H2 (F12 + F2)
+    // F12 precisa existir em H2 para bloquear ocupação de sala no 2º slot.
+    for (let i = turmasF1.length; i < turmas.length; i++) {
       for (let j = 0; j < salas.length; j++) {
         result[indiceResult] = {
           name: `t${i + 1}s${j + 1}h2`,
@@ -183,7 +230,7 @@ async function resolve(modelo, delta, mipGap, tmLim) {
       }
     }
     console.log(
-      `DEBUG resolve: Vars geradas: ${result.length} (esperado: ~${(turmasF1.length + turmasF12.length) * salas.length + turmasF2.length * salas.length})`,
+      `DEBUG resolve: Vars geradas: ${result.length} (esperado: ~${(turmasF1.length + 2 * turmasF12.length + turmasF2.length) * salas.length})`,
     );
     return result;
   }
@@ -208,8 +255,8 @@ async function resolve(modelo, delta, mipGap, tmLim) {
       indiceResult++;
     }
 
-    // Trava turma H2 (F2 apenas) - CORREÇÃO: Loop só para F2
-    for (let i = turmasF1.length + turmasF12.length; i < turmas.length; i++) {
+    // Trava turma H2 (F12 + F2)
+    for (let i = turmasF1.length; i < turmas.length; i++) {
       let varsSoma = new Array();
       let indiceVars = 0;
       for (let j = 0; j < salas.length; j++) {
@@ -243,8 +290,8 @@ async function resolve(modelo, delta, mipGap, tmLim) {
       };
       indiceResult++;
 
-      // H2 (F2 apenas) - CORREÇÃO: Loop só para F2
-      for (let i = turmasF1.length + turmasF12.length; i < turmas.length; i++) {
+      // H2 (F12 + F2)
+      for (let i = turmasF1.length; i < turmas.length; i++) {
         varsSomaH2[indiceVarsH2] = { name: `t${i + 1}s${j + 1}h2`, coef: 1 };
         indiceVarsH2++;
       }
@@ -256,7 +303,7 @@ async function resolve(modelo, delta, mipGap, tmLim) {
       indiceResult++;
     }
 
-    // Não alocar F12 em H2 (e vice-versa)
+    // Força F12 a ocupar a mesma sala em H1 e H2
     for (let i = turmasF1.length; i < turmasF1.length + turmasF12.length; i++) {
       for (let j = 0; j < salas.length; j++) {
         result[indiceResult] = {
@@ -287,8 +334,8 @@ async function resolve(modelo, delta, mipGap, tmLim) {
         indiceResult++;
       }
     }
-    // Capacidade H2 (F2 apenas) - CORREÇÃO: Loop só para F2
-    for (let i = turmasF1.length + turmasF12.length; i < turmas.length; i++) {
+    // Capacidade H2 (F12 + F2)
+    for (let i = turmasF1.length; i < turmas.length; i++) {
       for (let j = 0; j < salas.length; j++) {
         result[indiceResult] = {
           name: `capacidade-t${i + 1}s${j + 1}h2`,
@@ -318,8 +365,8 @@ async function resolve(modelo, delta, mipGap, tmLim) {
         indiceResult++;
       }
     }
-    // Binaries H2 (F2 apenas) - CORREÇÃO: Loop só para F2
-    for (let i = turmasF1.length + turmasF12.length; i < turmas.length; i++) {
+    // Binaries H2 (F12 + F2)
+    for (let i = turmasF1.length; i < turmas.length; i++) {
       for (let j = 0; j < salas.length; j++) {
         result[indiceResult] = `t${i + 1}s${j + 1}h2`;
         indiceResult++;

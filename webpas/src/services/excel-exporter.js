@@ -32,6 +32,14 @@ class ExcelExporter {
       if (state.turma) {
         resultObj["Turma"] = alocacao.turma.turma;
       }
+      resultObj["Junção"] =
+        alocacao.turma.juncao && alocacao.turma.juncao > 0
+          ? "Junto"
+          : "FALSO";
+      resultObj["ID Junção"] =
+        alocacao.turma.juncao && alocacao.turma.juncao > 0
+          ? Number(alocacao.turma.juncao)
+          : "";
       if (state.departamentoOferta) {
         resultObj["Departamento de Oferta"] = alocacao.turma.departamentoOferta;
       }
@@ -47,9 +55,6 @@ class ExcelExporter {
       }
       if (state.creditosAula) {
         resultObj["Créditos"] = alocacao.turma.creditosAula;
-      }
-      if (alocacao.turma.juncao && alocacao.turma.juncao > 0) {
-        resultObj["Junção"] = alocacao.juncao ? "Junto" : alocacao.turma.juncao;
       }
 
       resultArray.push(resultObj);
@@ -78,14 +83,19 @@ class ExcelExporter {
       resultObj["Nome da Disciplina"] = alocacao.turma.nomeDisciplina;
       resultObj["codDisciplina"] = alocacao.turma.codDisciplina;
       resultObj["Turma"] = alocacao.turma.turma;
+      resultObj["Junção"] =
+        alocacao.turma.juncao && alocacao.turma.juncao > 0
+          ? "Junto"
+          : "FALSO";
+      resultObj["ID Junção"] =
+        alocacao.turma.juncao && alocacao.turma.juncao > 0
+          ? Number(alocacao.turma.juncao)
+          : "";
       resultObj["Departamento de Oferta"] = alocacao.turma.departamentoOferta;
       resultObj["Departamento Recomendado"] = alocacao.turma.departamentoTurma;
       resultObj["Número de Alunos"] = alocacao.turma.totalTurma;
       resultObj["Docentes"] = alocacao.turma.docentes;
       resultObj["Créditos"] = alocacao.turma.creditosAula;
-      if (alocacao.turma.juncao && alocacao.turma.juncao > 0) {
-        resultObj["Junção"] = alocacao.juncao ? "Junto" : alocacao.turma.juncao;
-      }
 
       resultArray.push(resultObj);
     });
@@ -125,6 +135,14 @@ class ExcelExporter {
       if (state.turma) {
         resultObj["Turma"] = alocacao.turma.turma;
       }
+      resultObj["Junção"] =
+        alocacao.turma.juncao && alocacao.turma.juncao > 0
+          ? "Junto"
+          : "FALSO";
+      resultObj["ID Junção"] =
+        alocacao.turma.juncao && alocacao.turma.juncao > 0
+          ? Number(alocacao.turma.juncao)
+          : "";
       if (state.departamentoOferta) {
         resultObj["Departamento de Oferta"] = alocacao.turma.departamentoOferta;
       }
@@ -140,9 +158,6 @@ class ExcelExporter {
       }
       if (state.creditosAula) {
         resultObj["Créditos"] = alocacao.turma.creditosAula;
-      }
-      if (alocacao.turma.juncao && alocacao.turma.juncao > 0) {
-        resultObj["Junção"] = alocacao.juncao ? "Junto" : alocacao.turma.juncao;
       }
 
       resultArray.push(resultObj);
@@ -171,14 +186,19 @@ class ExcelExporter {
       resultObj["Nome da Disciplina"] = alocacao.turma.nomeDisciplina;
       resultObj["codDisciplina"] = alocacao.turma.codDisciplina;
       resultObj["Turma"] = alocacao.turma.turma;
+      resultObj["Junção"] =
+        alocacao.turma.juncao && alocacao.turma.juncao > 0
+          ? "Junto"
+          : "FALSO";
+      resultObj["ID Junção"] =
+        alocacao.turma.juncao && alocacao.turma.juncao > 0
+          ? Number(alocacao.turma.juncao)
+          : "";
       resultObj["Departamento de Oferta"] = alocacao.turma.departamentoOferta;
       resultObj["Departamento Recomendado"] = alocacao.turma.departamentoTurma;
       resultObj["Número de Alunos"] = alocacao.turma.totalTurma;
       resultObj["Docentes"] = alocacao.turma.docentes;
       resultObj["Créditos"] = alocacao.turma.creditosAula;
-      if (alocacao.turma.juncao && alocacao.turma.juncao > 0) {
-        resultObj["Junção"] = alocacao.juncao ? "Junto" : alocacao.turma.juncao;
-      }
 
       resultArray.push(resultObj);
     });
