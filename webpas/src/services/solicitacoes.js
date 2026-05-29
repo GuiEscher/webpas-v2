@@ -13,6 +13,7 @@
  */
 
 import TurmasDataService from "./turmas";
+import http from "../http-commom";
 
 // Tipos de solicitação de acessibilidade
 export const TIPOS_SOLICITACAO = [
@@ -199,6 +200,51 @@ class SolicitacoesService {
       this.reverterSolicitacao(s.turmaId),
     );
     return Promise.all(promises);
+  }
+
+  /**
+   * Sincroniza o localStorage com as solicitações realmente aplicadas no banco.
+   * Para cada turma com solicitacao != null no banco, garante que ela esteja
+   * no localStorage. Não remove entradas locais que ainda não foram aplicadas.
+   * Retorna quantas solicitações foram importadas do banco.
+   */
+  async syncFromBackend(ano, semestre) {
+    try {
+      const res = await http.get(`turmas/com-solicitacao/${ano}/${semestre}`);
+      const turmasDoBanco = res.data || [];
+      const locais = this.getAll();
+      const localIds = new Set(locais.map((s) => s.turmaId));
+
+      let importadas = 0;
+      turmasDoBanco.forEach((t) => {
+        if (!t.solicitacao) return;
+        if (localIds.has(String(t._id))) return; // já está no localStorage
+        const tipo = TIPOS_SOLICITACAO.find((x) => x.id === t.solicitacao);
+        if (!tipo) return;
+        locais.push({
+          turmaId: String(t._id),
+          idTurma: t.idTurma,
+          nomeDisciplina: t.nomeDisciplina,
+          turma: t.turma,
+          departamentoTurma: t.departamentoTurma,
+          tipoSolicitacao: tipo.id,
+          tipoSolicitacaoLabel: tipo.label,
+          ano: t.ano,
+          semestre: t.semestre,
+          campus: t.campus,
+          diaDaSemana: t.diaDaSemana,
+          horarioInicio: t.horarioInicio,
+          horarioFim: t.horarioFim,
+        });
+        importadas++;
+      });
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(locais));
+      return importadas;
+    } catch (err) {
+      console.error("syncFromBackend error:", err);
+      return 0;
+    }
   }
 }
 

@@ -812,6 +812,31 @@ router.get("/diagnostico/:ano/:semestre", protect, async (req, res) => {
 });
 
 // =========================================================================
+// Lista turmas que têm solicitação ativa no banco (sincroniza com frontend)
+// =========================================================================
+router.get("/com-solicitacao/:ano/:semestre", protect, async (req, res) => {
+  try {
+    const user = req.user;
+    const ano = parseInt(req.params.ano);
+    const semestre = parseInt(req.params.semestre);
+    if (isNaN(ano) || isNaN(semestre))
+      return res.status(400).json({ error: "Ano/Semestre inválidos" });
+
+    const turmas = await Turma.find({
+      ano,
+      semestre,
+      user: user._id,
+      solicitacao: { $ne: null, $exists: true },
+    }).lean();
+
+    res.json(turmas);
+  } catch (err) {
+    console.error("[/com-solicitacao]", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =========================================================================
 // ROTAS DE TESTE (podem ser removidas depois) — aplicar solicitações em lote
 // =========================================================================
 

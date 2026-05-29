@@ -20,6 +20,35 @@ const formatarHorarioParaDB = (horario) => {
 };
 
 // --- GERA VARIAÇÕES DE TOLERÂNCIA DE HORÁRIO ---
+/**
+ * Gera todos os horários (formato "HHMM") entre inicioSlot e fimSlot, em
+ * intervalos de `passo` minutos, já incluindo variantes de 3 dígitos (800/0800).
+ * Usado para capturar turmas cujo horário "cabe dentro" de um slot padrão
+ * (ex: turma 20h-21h é tratada como ocupando o slot Noite F1 19-21).
+ */
+const gerarHorariosDentroSlot = (inicioSlot, fimSlot, passo = 5) => {
+  if (!inicioSlot || !fimSlot) return [];
+  const norm = (h) => (h.length === 3 ? "0" + h : h);
+  const toMin = (h) => {
+    const n = norm(h);
+    return parseInt(n.substring(0, 2)) * 60 + parseInt(n.substring(2));
+  };
+  const fromMin = (m) => {
+    const hh = Math.floor(m / 60);
+    const mm = m % 60;
+    return String(hh * 100 + mm).padStart(4, "0");
+  };
+  const result = new Set();
+  const startMin = toMin(inicioSlot);
+  const endMin = toMin(fimSlot);
+  for (let m = startMin; m <= endMin; m += passo) {
+    const h4 = fromMin(m);
+    result.add(h4);
+    if (h4.startsWith("0")) result.add(h4.substring(1));
+  }
+  return [...result];
+};
+
 const gerarJanelaHorario = (horarioBase) => {
   if (!horarioBase) return [];
 
@@ -172,14 +201,30 @@ async function dbtomodel(
   let hFimF2 = formatarHorarioParaDB(config[0].horarios[periodo]["Fim"].slot2);
 
   // 2. Listas Flexíveis (Com correção 800/0800)
-  const listaInicioF1 = gerarJanelaHorario(hInicioF1);
-  const listaFimF1 = gerarJanelaHorario(hFimF1);
+  // Para F1/F2: além da tolerância padrão (±30 min das bordas), incluímos TODOS
+  // os horários dentro do slot, permitindo que turmas cujo horário cabe dentro
+  // do slot (ex: 20h-21h dentro de F1 Noite 19-21) sejam alocadas.
+  const listaInicioF1 = [...new Set([
+    ...gerarJanelaHorario(hInicioF1),
+    ...gerarHorariosDentroSlot(hInicioF1, hFimF1),
+  ])];
+  const listaFimF1 = [...new Set([
+    ...gerarJanelaHorario(hFimF1),
+    ...gerarHorariosDentroSlot(hInicioF1, hFimF1),
+  ])];
 
+  // F12 continua restritivo (só turmas que cobrem o período inteiro 4h)
   const listaInicioF12 = gerarJanelaHorario(hInicioF12);
   const listaFimF12 = gerarJanelaHorario(hFimF12);
 
-  const listaInicioF2 = gerarJanelaHorario(hInicioF2);
-  const listaFimF2 = gerarJanelaHorario(hFimF2);
+  const listaInicioF2 = [...new Set([
+    ...gerarJanelaHorario(hInicioF2),
+    ...gerarHorariosDentroSlot(hInicioF2, hFimF2),
+  ])];
+  const listaFimF2 = [...new Set([
+    ...gerarJanelaHorario(hFimF2),
+    ...gerarHorariosDentroSlot(hInicioF2, hFimF2),
+  ])];
 
   const diaNormalizado = normalizarString(diaDaSemana);
   const opcoesDia = [diaNormalizado, `'${diaNormalizado}'`];
@@ -320,6 +365,15 @@ async function dbtomodel(
     if (t2) {
       // ENCONTROU A MESMA TURMA NO SEGUNDO HORÁRIO
       // Unifica em F12 (Horário Cheio)
+      // Preserva a solicitação: se o primeiro slot (t1) não tem solicitação
+      // mas o segundo (t2) tem, herda do t2 para que o stitching não descarte
+      // a solicitação do usuário. Se ambos têm, mantém a do t1 (primeiro).
+      if (!t1.solicitacao && t2.solicitacao) {
+        t1.solicitacao = t2.solicitacao;
+        console.log(
+          `[dbtomodel] 🎯 Solicitação "${t2.solicitacao}" herdada do 2º slot para F12: ${t1.nomeDisciplina} (${t1.turma})`,
+        );
+      }
       modelo.turmasf12.push(t1);
       matchedF2Ids.add(t2._id.toString());
       console.log(

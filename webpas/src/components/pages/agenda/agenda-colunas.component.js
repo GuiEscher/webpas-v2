@@ -16,7 +16,8 @@ const tableRowCss = {
 };
 
 const AgendaColunas = (props) => {
-  const { state, filterFn, alocacoes } = props;
+  const { state, filterFn, alocacoes, isSelected, onToggleSelect } = props;
+  const selectable = typeof onToggleSelect === "function";
 
   const [numCampos, setNumCampos] = useState(0);
 
@@ -59,9 +60,14 @@ const AgendaColunas = (props) => {
           container
           spacing={1.5}
           alignItems="center"
-          columns={28}
+          columns={selectable ? 29 : 28}
           padding={"20px 30px 0px 20px"}
         >
+          {selectable && (
+            <Grid item xs={1}>
+              <Typography sx={{ ...tableHeadCss, fontSize: "0.75rem" }}>✓</Typography>
+            </Grid>
+          )}
           <Grid item xs={2}>
             <Typography sx={tableHeadCss}>Prédio</Typography>
           </Grid>
@@ -162,7 +168,7 @@ const AgendaColunas = (props) => {
           ) : (
             <Grid item xs={22 - numCampos * 2}></Grid>
           )}
-          <Grid item xs={28}>
+          <Grid item xs={selectable ? 29 : 28}>
             <Divider></Divider>
           </Grid>
         </Grid>
@@ -173,12 +179,37 @@ const AgendaColunas = (props) => {
           maxHeight={"550px"}
           spacing={1.5}
           alignItems="center"
-          columns={28}
+          columns={selectable ? 29 : 28}
           padding={"10px 20px 10px 20px"}
         >
           {filterFn.fn(sortAlocacoes(alocacoes)).map((alocacao, index) => {
+            const selected = selectable && isSelected && isSelected(alocacao);
             return (
               <React.Fragment key={index}>
+                {selectable && (
+                  <Grid item xs={1}>
+                    <Box
+                      onClick={() => onToggleSelect(alocacao)}
+                      sx={{
+                        cursor: "pointer",
+                        textAlign: "center",
+                        width: 22,
+                        height: 22,
+                        borderRadius: "4px",
+                        border: "2px solid",
+                        borderColor: selected ? "#ff7d11" : "#bdbdbd",
+                        bgcolor: selected ? "#ff7d11" : "transparent",
+                        color: "#fff",
+                        fontSize: "0.9rem",
+                        lineHeight: "18px",
+                        mx: "auto",
+                        userSelect: "none",
+                      }}
+                    >
+                      {selected ? "✓" : ""}
+                    </Box>
+                  </Grid>
+                )}
                 <Grid item xs={2}>
                   <Typography sx={tableRowCss}>
                     {alocacao.sala.predio}
@@ -305,7 +336,7 @@ const AgendaColunas = (props) => {
                 ) : (
                   <Grid item xs={22 - numCampos * 2}></Grid>
                 )}
-                <Grid item xs={28}>
+                <Grid item xs={selectable ? 29 : 28}>
                   <Divider></Divider>
                 </Grid>
               </React.Fragment>
