@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # 1. Banco de Dados MongoDB Local (opcional, caso não queira usar o Atlas)
+  mongodb:
+    image: mongo:6.0
+    container_name: webpas_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+  # 2. Backend Node.js
+  backend:
+    build: ./backend
+    container_name: webpas_backend
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      # Se quiser usar o banco local do docker, descomente a linha abaixo:
+      # - ATLAS_URI=mongodb://mongodb:27017/webpas
+      # Se quiser continuar usando a nuvem, coloque a URI do MongoDB Atlas:
+      - ATLAS_URI=${ATLAS_URI}
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
+  # 3. Frontend React + Nginx
+  frontend:
+    build: ./webpas
+    container_name: webpas_frontend
+    ports:
+      - "80:80"   # Acesse sua aplicação pela porta 80 (padrão web) do servidor
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # 4. Container utilitário Python (roda o processamento de dados)
+  # Ele rodará uma vez e sairá. Para rodar novamente: docker-compose up python-worker
+  python-worker:
+    build: ./sv-python
+    container_name: webpas_python
+    volumes:
+      - ./sv-python:/app  # Mapeia a pasta local para salvar o JSON gerado na sua máquina
+    profiles:
+      - tools # Impede que ele suba automaticamente junto com a aplicação web
+
+volumes:
+  mongo_data:

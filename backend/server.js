@@ -12,10 +12,10 @@ const app = express()
 app.use(cookieParser())
 const port = process.env.PORT || 5000
 
-app.use(cors({credentials:true,origin:'http://localhost:3000'}))
+app.use(cors({credentials:true, origin: process.env.FRONTEND_URL || 'http://localhost:3000'}))
 
 // Adicionado para lidar com requisições de pre-flight (CORS)
-app.options('*', cors({credentials:true,origin:'http://localhost:3000'}));
+app.options('*', cors({credentials:true,origin: process.env.FRONTEND_URL || 'http://localhost:3000'}));
 
 app.use(bodyParser.json({limit: '5mb'}));
 app.use(bodyParser.urlencoded({limit: '5mb', extended: true}));
