@@ -58,46 +58,46 @@ const StatCard = ({ label, value, color, pct, sub }) => (
 // Descrição legível de cada motivo
 const MOTIVO_DESCRICAO = {
   credZero: {
-    label: "Crédito aula = 0",
+    label: "Sem créditos de aula teórica",
     color: "warning",
     icon: <WarningIcon fontSize="small" />,
-    text: "Turmas com cred_aula=0 (geralmente estágios, práticas supervisionadas). Filtradas pela regra do solver.",
+    text: "Turmas sem créditos de aula (cred_aula = 0). Geralmente são estágios, práticas supervisionadas e laboratórios que não precisam de alocação de sala padrão.",
   },
   alocadoChefia: {
-    label: "Alocada pela chefia",
+    label: "Alocada pela chefia do departamento",
     color: "default",
     icon: <InfoIcon fontSize="small" />,
-    text: "Turmas com alocado_chefia=true. A chefia já definiu a sala; o solver não mexe.",
+    text: "Turmas com o campo \"alocado pela chefia\" marcado como verdadeiro. A chefia já definiu a sala manualmente e o sistema não mexe nelas.",
   },
   poucoAlunos: {
-    label: "Poucos alunos (< minAlunos)",
+    label: "Poucos alunos inscritos",
     color: "warning",
     icon: <WarningIcon fontSize="small" />,
-    text: "Turmas com menos que o mínimo de alunos configurado e sem junção.",
+    text: "Turmas com número de inscritos abaixo do mínimo configurado (e que não fazem parte de junção com outras turmas).",
   },
   horarioAtipico: {
-    label: "Horário atípico",
+    label: "Horário fora do padrão",
     color: "warning",
     icon: <WarningIcon fontSize="small" />,
-    text: "Horários que não encaixam em nenhum período (Manhã/Tarde/Noite) da configuração.",
+    text: "Horários que não encaixam em nenhum período (Manhã, Tarde ou Noite) configurado. Ex.: aulas que atravessam períodos (como 16h–21h).",
   },
   f12Pair: {
-    label: "F12-pair (segundo slot absorvido)",
+    label: "Aula contínua de 4h — segundo horário",
     color: "info",
     icon: <InfoIcon fontSize="small" />,
-    text: "Turma de segundo slot foi unida automaticamente à do primeiro slot (F1+F2=F12). Está alocada — apenas não aparece separada.",
+    text: "Estas turmas fazem parte de uma aula contínua de 4 horas, dividida em dois horários consecutivos (ex.: 8h–10h e 10h–12h). O sistema aloca a aula inteira em um único bloco usando a sala do primeiro horário; por isso o segundo horário não aparece como alocação separada, mas a turma está sim alocada.",
   },
   juncaoAbsorvida: {
-    label: "Junção — absorvida pelo representante",
+    label: "Turma em junção (alocada com outra)",
     color: "info",
     icon: <InfoIcon fontSize="small" />,
-    text: "Turma do grupo de junção; a alocação está no representante (outra turma do grupo).",
+    text: "Turmas que fazem parte de um grupo de junção (mesma disciplina, mesmo horário, múltiplas turmas compartilhando a sala). A sala foi alocada na turma representante do grupo; as demais estão alocadas junto com ela.",
   },
   solverFalhou: {
-    label: "⚠️ Solver não alocou (investigação necessária)",
+    label: "Sem alocação — precisa de atenção",
     color: "error",
     icon: <ErrorIcon fontSize="small" />,
-    text: "Turmas elegíveis que o solver não conseguiu alocar. Possíveis causas: infeasibilidade, capacidade insuficiente, conflito de horário.",
+    text: "Turmas que deveriam ter sido alocadas mas o sistema não encontrou sala adequada. Possíveis causas: falta de sala disponível no horário, capacidade insuficiente, ou restrições de distância/acessibilidade muito rígidas.",
   },
 };
 
@@ -452,8 +452,10 @@ const AnaliseResultado = ({ data }) => {
           📋 Turmas não alocadas — organizadas por motivo
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Cada categoria corresponde a uma regra do solver. "Solver falhou" é a única que merece
-          investigação — as demais são comportamentos esperados pelas regras configuradas.
+          Cada categoria explica por que uma turma não tem alocação de sala individual. A
+          categoria <strong>"Sem alocação — precisa de atenção"</strong> é a única que merece
+          investigação; as demais são comportamentos esperados (turmas de 4h em bloco, turmas em
+          junção, estágios sem necessidade de sala, etc.).
         </Typography>
 
         {motivosOrdem.map((motivo) => {

@@ -239,16 +239,10 @@ const Navbar = (props) => {
             primary="Resultado"
             icon={<DateRangeIcon />}
           />
-          <ListItemLink
-            to="/comparacao"
-            primary="Comparar"
-            icon={<CompareArrowsIcon />}
-          />
-          <ListItemLink
-            to="/teste-solicitacoes"
-            primary="TESTE Solicitações"
-            icon={<ScienceIcon />}
-          />
+          {/* Itens ocultos em produção (rotas permanecem funcionais via URL):
+              - /comparacao (ferramenta de desenvolvimento/validação)
+              - /teste-solicitacoes (página de teste)
+          */}
           <ListItemLink
             to="/config"
             primary="Configurações"

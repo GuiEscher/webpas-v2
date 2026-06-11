@@ -4,6 +4,7 @@ const { dbtomodel, gerarJanelaHorario, formatarHorarioParaDB, normalizarString }
 const { resolve } = require('../solver-logic/gerasalahorarioglpk')
 const { trataresultado } = require('../solver-logic/trataresultado')
 const Turma = require('../models/turma.model')
+const Sala = require('../models/sala.model')
 const Config = require('../models/config.model')
 const Distancia = require('../models/distancia.model')
 const { protect } = require('../middleware/auth')
@@ -180,7 +181,152 @@ router.get('/analise/:ano/:semestre', protect, async (req, res) => {
   }
 });
 
-const alocationRemove = (arr,removeArray) => { 
+// =========================================================================
+// ROTA: salas livres em um Resultado/slot
+// Lista salas do usuário que estão DISPONÍVEIS para o dia/período do resultado
+// e que NÃO estão ocupadas em nenhuma alocação naquele horarioSlot.
+// Apenas LÊ. Não altera estado.
+// =========================================================================
+router.get('/salas-livres/:resultadoId/:slot', async (req, res) => {
+  try {
+    const { user } = req;
+    const { resultadoId, slot } = req.params;
+    const slotNum = parseInt(slot);
+    if (![1, 2].includes(slotNum)) {
+      return res.status(400).json({ error: 'slot deve ser 1 ou 2' });
+    }
+
+    const resultado = await Resultado.findOne({ _id: resultadoId, user: user._id }).lean();
+    if (!resultado) return res.status(404).json({ error: 'Resultado não encontrado' });
+    const { diaDaSemana, periodo } = resultado;
+
+    const todas = await Sala.find({ user: user._id }).lean();
+    const disponiveis = todas.filter((s) =>
+      (s.disponibilidade || []).some(
+        (d) => d.dia === diaDaSemana && d.periodo === periodo && d.disponivel === true,
+      ),
+    );
+
+    // IMPORTANTE: as salas embutidas em resultado.alocacoes podem ter _id
+    // desatualizado (ex.: salas reimportadas geram novos _id). Por isso a
+    // ocupação é comparada por predio+numeroSala, que é a chave única estável.
+    const salaKey = (s) => `${s?.predio}||${s?.numeroSala}`;
+    const ocupadas = new Set(
+      (resultado.alocacoes || [])
+        .filter((a) => a.horarioSlot === slotNum && a.sala)
+        .map((a) => salaKey(a.sala)),
+    );
+
+    const livres = disponiveis
+      .filter((s) => s.predio !== 'predioAux')
+      .filter((s) => !ocupadas.has(salaKey(s)));
+
+    res.json(livres);
+  } catch (err) {
+    console.error('[salas-livres] erro:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =========================================================================
+// ROTA: atribuir uma sala livre a uma turma já alocada (substitui a sala atual)
+// Body: { turmaId, salaAtualId, salaNovaId }
+// - Atualiza TODAS as alocações dessa turma neste Resultado (cobre F12 que usa
+//   slot 1 e slot 2 — ambas devem ficar na mesma sala).
+// - Revalida no servidor que salaNova está disponível e livre nos slots alvo.
+// =========================================================================
+router.post('/atribuir-sala/:resultadoId', async (req, res) => {
+  try {
+    const { user } = req;
+    const { resultadoId } = req.params;
+    const { turmaId, salaAtualId, salaNovaId } = req.body;
+
+    if (!turmaId || !salaAtualId || !salaNovaId) {
+      return res.status(400).json({
+        error: 'turmaId, salaAtualId e salaNovaId são obrigatórios',
+      });
+    }
+    if (String(salaAtualId) === String(salaNovaId)) {
+      return res.status(400).json({ error: 'A sala nova é igual à atual.' });
+    }
+
+    const resultado = await Resultado.findOne({ _id: resultadoId, user: user._id });
+    if (!resultado) return res.status(404).json({ error: 'Resultado não encontrado' });
+
+    const salaNova = await Sala.findOne({ _id: salaNovaId, user: user._id });
+    if (!salaNova) return res.status(404).json({ error: 'Sala nova não encontrada' });
+
+    // Disponibilidade da sala nova naquele dia/periodo
+    const disponivel = (salaNova.disponibilidade || []).some(
+      (d) =>
+        d.dia === resultado.diaDaSemana &&
+        d.periodo === resultado.periodo &&
+        d.disponivel === true,
+    );
+    if (!disponivel) {
+      return res.status(409).json({
+        error: `Sala não está disponível em ${resultado.diaDaSemana}/${resultado.periodo}.`,
+      });
+    }
+
+    // Alocações da turma com a sala atual
+    const alocsDaTurma = (resultado.alocacoes || []).filter(
+      (a) =>
+        String(a.turma?._id) === String(turmaId) &&
+        String(a.sala?._id) === String(salaAtualId),
+    );
+    if (alocsDaTurma.length === 0) {
+      return res.status(404).json({
+        error: 'Alocação atual não encontrada (turma+sala). Recarregue a página.',
+      });
+    }
+
+    const slotsAlvo = new Set(alocsDaTurma.map((a) => a.horarioSlot));
+
+    // Sala nova precisa estar livre em TODOS os slots da turma (importante para F12).
+    // Compara por predio+numeroSala (chave estável) pois os _id embutidos podem
+    // estar desatualizados em relação à coleção de Salas atual.
+    const salaNovaKey = `${salaNova.predio}||${salaNova.numeroSala}`;
+    const conflito = (resultado.alocacoes || []).find(
+      (a) =>
+        slotsAlvo.has(a.horarioSlot) &&
+        a.sala &&
+        `${a.sala.predio}||${a.sala.numeroSala}` === salaNovaKey &&
+        String(a.turma?._id) !== String(turmaId),
+    );
+    if (conflito) {
+      return res.status(409).json({
+        error: 'Sala já está ocupada neste horário. Recarregue a página.',
+      });
+    }
+
+    // Aplica a troca: substitui sala em todas as alocações da turma
+    const salaNovaObj = salaNova.toObject();
+    resultado.alocacoes = (resultado.alocacoes || []).map((a) => {
+      const match =
+        String(a.turma?._id) === String(turmaId) &&
+        String(a.sala?._id) === String(salaAtualId);
+      if (!match) return a;
+      return {
+        ...(a.toObject ? a.toObject() : a),
+        sala: salaNovaObj,
+      };
+    });
+    resultado.markModified('alocacoes');
+
+    await resultado.save();
+
+    res.json({
+      message: 'Sala atualizada com sucesso',
+      slotsAtualizados: Array.from(slotsAlvo),
+    });
+  } catch (err) {
+    console.error('[atribuir-sala] erro:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+const alocationRemove = (arr,removeArray) => {
     let arrayTemp = []
     
     arr.map(element=>{

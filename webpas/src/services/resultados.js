@@ -26,6 +26,14 @@ class ResultadosDataService {
         return http.post(`resultados/update/${id}`,data)
     }
 
+    getSalasLivres(resultadoId, slot) {
+        return http.get(`resultados/salas-livres/${resultadoId}/${slot}`);
+    }
+
+    atribuirSala(resultadoId, data) {
+        return http.post(`resultados/atribuir-sala/${resultadoId}`, data);
+    }
+
     getAnalise(ano, semestre, minAlunos = 5) {
         return http.get(`resultados/analise/${ano}/${semestre}?minAlunos=${minAlunos}`);
     }

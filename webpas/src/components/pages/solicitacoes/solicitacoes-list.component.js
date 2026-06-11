@@ -100,7 +100,22 @@ const SolicitacoesList = (props) => {
   }, []);
 
   useEffect(() => {
-    retornaSolicitacoes();
+    (async () => {
+      // Sincroniza com o banco: traz solicitações realmente aplicadas
+      // (inclui as que foram aplicadas por outras vias, como lote/API)
+      const importadas = await SolicitacoesService.syncFromBackend(
+        anoTable,
+        semestreTable,
+      );
+      if (importadas > 0) {
+        setNotify({
+          isOpen: true,
+          message: `${importadas} solicitação(ões) sincronizada(s) do banco.`,
+          type: "info",
+        });
+      }
+      retornaSolicitacoes();
+    })();
   }, [anoTable, semestreTable]);
 
   const retornaSolicitacoes = () => {

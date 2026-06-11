@@ -13,6 +13,8 @@ import {
   ToggleButton,
   Dialog,
   DialogContent,
+  DialogTitle,
+  DialogActions,
   Tab,
   Tabs,
   Typography,
@@ -20,7 +22,13 @@ import {
   Stack,
   InputAdornment,
   IconButton,
+  Snackbar,
+  Alert,
+  Chip,
 } from "@mui/material";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
+import CloseIcon from "@mui/icons-material/Close";
+import MeetingRoomIcon from "@mui/icons-material/MeetingRoom";
 import Select from "../../forms/select.component";
 import CachedTwoToneIcon from "@mui/icons-material/CachedTwoTone";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -37,6 +45,7 @@ import AgendaColunas from "./agenda-colunas.component";
 import AgendaLinhas from "./agenda-linhas.component";
 import AgendaCampos from "./agenda-campos.component";
 import TrocaSalaForm from "../../forms/trocaSalaForm.component";
+import AlterarSalaForm from "../../forms/alterarSalaForm.component";
 import ExportarResultadoForm from "../../forms/exportarResultadoForm.component";
 import ResultadosDataService from "../../../services/resultados";
 import Analise from "../analise/analise.component";
@@ -101,6 +110,86 @@ const Agenda = (props) => {
     },
   });
   const [viewCampus, setViewCampus] = useState("São Carlos");
+
+  // --- TROCA RÁPIDA: seleção de até 2 alocações ---
+  const [selectedAlocacoes, setSelectedAlocacoes] = useState([]);
+  const [openQuickSwap, setOpenQuickSwap] = useState(false);
+  const [swapMsg, setSwapMsg] = useState(null);
+  const [openAlterarSala, setOpenAlterarSala] = useState(false);
+
+  const alocacaoKey = (a) =>
+    `${a?.turma?._id}_${a?.sala?._id}_${a?.horarioSlot}_${a?.resultadoId}`;
+
+  const isAlocacaoSelected = (a) => {
+    const k = alocacaoKey(a);
+    return selectedAlocacoes.some((x) => alocacaoKey(x) === k);
+  };
+
+  const toggleAlocacaoSelect = (a) => {
+    const k = alocacaoKey(a);
+    setSelectedAlocacoes((prev) => {
+      const exists = prev.find((x) => alocacaoKey(x) === k);
+      if (exists) return prev.filter((x) => alocacaoKey(x) !== k);
+      if (prev.length >= 2) {
+        // Limite: substitui a primeira pela nova (mantém a última e a nova)
+        return [prev[prev.length - 1], a];
+      }
+      return [...prev, a];
+    });
+  };
+
+  const clearSelection = () => setSelectedAlocacoes([]);
+
+  const sameResultado =
+    selectedAlocacoes.length === 2 &&
+    selectedAlocacoes[0].resultadoId === selectedAlocacoes[1].resultadoId;
+
+  const sameSala =
+    selectedAlocacoes.length === 2 &&
+    selectedAlocacoes[0]?.sala?._id === selectedAlocacoes[1]?.sala?._id;
+
+  const describeAlocacao = (a) => {
+    if (!a) return "";
+    const turmaLabel =
+      a?.turma?.nomeDisciplina || a?.turma?.idTurma || "Turma";
+    const sala = `${a?.sala?.predio || "?"} ${a?.sala?.numeroSala || "?"}`;
+    return `${turmaLabel} → ${sala}`;
+  };
+
+  const handleConfirmSwap = () => {
+    if (selectedAlocacoes.length !== 2 || !sameResultado || sameSala) return;
+
+    const [a, b] = selectedAlocacoes;
+    // Convenção da rota /update/:id: alocacaoOrigem recebe salaDestino e
+    // alocacaoDestino recebe salaOrigem. Logo salaOrigem = sala de A e
+    // salaDestino = sala de B, para que A vá para a sala de B e vice-versa.
+    const data = {
+      salaOrigem: a.sala,
+      salaDestino: b.sala,
+      alocacaoOrigem: { sala: a.sala, turma: a.turma },
+      alocacaoDestino: { sala: b.sala, turma: b.turma },
+      alocacaoAux: {},
+    };
+
+    ResultadosDataService.trocaSala(data, a.resultadoId)
+      .then(() => {
+        setOpenQuickSwap(false);
+        setSwapMsg({
+          severity: "success",
+          text: "Troca realizada com sucesso.",
+        });
+        clearSelection();
+        retornaResultados(ano, semestre);
+      })
+      .catch((err) => {
+        console.error("Erro na troca rápida:", err);
+        setOpenQuickSwap(false);
+        setSwapMsg({
+          severity: "error",
+          text: "Falha ao realizar a troca. Tente novamente.",
+        });
+      });
+  };
 
   const [state, setState] = React.useState({
     capacidade: false,
@@ -213,6 +302,10 @@ const Agenda = (props) => {
                     : getHorarioByPeriodo(resultado.periodo, 2),
                 turma: alocacao?.turma,
                 sala: salaDisplay,
+                // Contexto para troca rápida
+                resultadoId: resultado._id,
+                periodo: resultado.periodo,
+                horarioSlot: alocacao?.horarioSlot,
               };
               alocacoesTemp.push(alocacaoTemp);
             }
@@ -231,6 +324,8 @@ const Agenda = (props) => {
     if (newValue < config.dias.length) {
       setDia(config.dias[newValue]);
     }
+    // Limpar seleção ao trocar de contexto
+    clearSelection();
   };
 
   const handleFormato = (event, novoFormato) => {
@@ -535,6 +630,88 @@ const Agenda = (props) => {
         </Grid>
       </Paper>
 
+      {/* --- BARRA DE AÇÕES SOBRE SELEÇÃO --- */}
+      {selectedAlocacoes.length > 0 && tabValue < config.dias.length && (
+        <Paper
+          elevation={0}
+          variant="outlined"
+          sx={{
+            p: 1.5,
+            mb: 2,
+            bgcolor: "#fff7ec",
+            borderColor: "#ff7d11",
+          }}
+        >
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            spacing={1.5}
+            alignItems={{ xs: "flex-start", md: "center" }}
+            justifyContent="space-between"
+          >
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {selectedAlocacoes.length === 1
+                  ? "1 turma selecionada:"
+                  : `${selectedAlocacoes.length}/2 selecionadas:`}
+              </Typography>
+              {selectedAlocacoes.map((a, i) => (
+                <Chip
+                  key={i}
+                  size="small"
+                  label={describeAlocacao(a)}
+                  onDelete={() => toggleAlocacaoSelect(a)}
+                  sx={{ bgcolor: "#fff", borderColor: "#ff7d11" }}
+                  variant="outlined"
+                />
+              ))}
+            </Stack>
+            <Stack direction="row" spacing={1} alignItems="center">
+              {selectedAlocacoes.length === 2 && !sameResultado && (
+                <Typography variant="caption" color="error" sx={{ alignSelf: "center" }}>
+                  As turmas devem estar no mesmo dia e período.
+                </Typography>
+              )}
+              {selectedAlocacoes.length === 2 && sameResultado && sameSala && (
+                <Typography variant="caption" color="error" sx={{ alignSelf: "center" }}>
+                  As turmas já estão na mesma sala.
+                </Typography>
+              )}
+              {selectedAlocacoes.length === 1 && (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  startIcon={<MeetingRoomIcon />}
+                  onClick={() => setOpenAlterarSala(true)}
+                >
+                  Alterar Sala
+                </Button>
+              )}
+              {selectedAlocacoes.length === 2 && (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  startIcon={<SwapHorizIcon />}
+                  disabled={!sameResultado || sameSala}
+                  onClick={() => setOpenQuickSwap(true)}
+                >
+                  Trocar Salas
+                </Button>
+              )}
+              <Button
+                variant="text"
+                size="small"
+                startIcon={<CloseIcon />}
+                onClick={clearSelection}
+              >
+                Limpar
+              </Button>
+            </Stack>
+          </Stack>
+        </Paper>
+      )}
+
       {/* --- ÁREA DE ABAS (SEMANA) --- */}
       <Paper elevation={1} sx={{ mb: 0 }}>
         <Box
@@ -588,6 +765,8 @@ const Agenda = (props) => {
                 horariosInicio={horariosInicio}
                 filterFn={filterFn}
                 alocacoes={alocacoes}
+                isSelected={isAlocacaoSelected}
+                onToggleSelect={toggleAlocacaoSelect}
               />
             ) : (
               <AgendaLinhas
@@ -642,6 +821,102 @@ const Agenda = (props) => {
           />
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        maxWidth="sm"
+        fullWidth
+        open={openQuickSwap}
+        onClose={() => setOpenQuickSwap(false)}
+      >
+        <DialogTitle>Confirmar troca de salas</DialogTitle>
+        <DialogContent dividers>
+          {selectedAlocacoes.length === 2 && (
+            <Stack spacing={2}>
+              <Typography variant="body2">
+                As salas das duas turmas serão trocadas entre si:
+              </Typography>
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {selectedAlocacoes[0]?.turma?.nomeDisciplina ||
+                    selectedAlocacoes[0]?.turma?.idTurma}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  {selectedAlocacoes[0]?.sala?.predio}{" "}
+                  {selectedAlocacoes[0]?.sala?.numeroSala}
+                  {"  →  "}
+                  <b>
+                    {selectedAlocacoes[1]?.sala?.predio}{" "}
+                    {selectedAlocacoes[1]?.sala?.numeroSala}
+                  </b>
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {selectedAlocacoes[1]?.turma?.nomeDisciplina ||
+                    selectedAlocacoes[1]?.turma?.idTurma}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  {selectedAlocacoes[1]?.sala?.predio}{" "}
+                  {selectedAlocacoes[1]?.sala?.numeroSala}
+                  {"  →  "}
+                  <b>
+                    {selectedAlocacoes[0]?.sala?.predio}{" "}
+                    {selectedAlocacoes[0]?.sala?.numeroSala}
+                  </b>
+                </Typography>
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenQuickSwap(false)}>Cancelar</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<SwapHorizIcon />}
+            onClick={handleConfirmSwap}
+          >
+            Confirmar troca
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <AlterarSalaForm
+        open={openAlterarSala}
+        onClose={() => setOpenAlterarSala(false)}
+        alocacao={selectedAlocacoes[0]}
+        onSuccess={() => {
+          setOpenAlterarSala(false);
+          setSwapMsg({
+            severity: "success",
+            text: "Sala alterada com sucesso.",
+          });
+          clearSelection();
+          retornaResultados(ano, semestre);
+        }}
+        onError={(msg) => {
+          setOpenAlterarSala(false);
+          setSwapMsg({ severity: "error", text: msg });
+        }}
+      />
+
+      <Snackbar
+        open={!!swapMsg}
+        autoHideDuration={4000}
+        onClose={() => setSwapMsg(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        {swapMsg ? (
+          <Alert
+            onClose={() => setSwapMsg(null)}
+            severity={swapMsg.severity}
+            variant="filled"
+            sx={{ width: "100%" }}
+          >
+            {swapMsg.text}
+          </Alert>
+        ) : undefined}
+      </Snackbar>
     </>
   );
 };
