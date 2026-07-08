@@ -34,6 +34,14 @@ class ResultadosDataService {
         return http.post(`resultados/atribuir-sala/${resultadoId}`, data);
     }
 
+    getSalasLivresTurma(turmaId) {
+        return http.get(`resultados/salas-livres-turma/${turmaId}`);
+    }
+
+    alocarManual(data) {
+        return http.post(`resultados/alocar-manual`, data);
+    }
+
     getAnalise(ano, semestre, minAlunos = 5) {
         return http.get(`resultados/analise/${ano}/${semestre}?minAlunos=${minAlunos}`);
     }

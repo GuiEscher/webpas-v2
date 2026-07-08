@@ -53,6 +53,9 @@ import ConfirmDialog from "../../re-usable/confirmDialog.component";
 import handleServerResponses from "../../../services/response-handler";
 import AjudaTurma from "../help/ajuda-turma.component";
 import ErrorIcon from "@mui/icons-material/Error";
+import LinkIcon from "@mui/icons-material/Link";
+import LinkOffIcon from "@mui/icons-material/LinkOff";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SolicitacoesService, {
   TIPOS_SOLICITACAO,
 } from "../../../services/solicitacoes";
@@ -483,6 +486,40 @@ const TurmasList = (props) => {
       .catch((err) => handleServerResponses("turmas", err, setNotify));
   };
 
+  const onAgruparJuncao = () => {
+    TurmasDataService.agruparJuncao(selected)
+      .then((res) => {
+        setNotify({
+          isOpen: true,
+          message: `Turmas agrupadas em junção (ID ${res.data?.juncao}).`,
+          type: "success",
+        });
+        retornaTurmas(anoTable, semestreTable);
+        setSelected([]);
+      })
+      .catch((err) => {
+        const msg = err?.response?.data?.error || "Erro ao agrupar em junção.";
+        setNotify({ isOpen: true, message: msg, type: "error" });
+      });
+  };
+
+  const onDesagruparJuncao = () => {
+    TurmasDataService.desagruparJuncao(selected)
+      .then(() => {
+        setNotify({
+          isOpen: true,
+          message: "Junção removida das turmas selecionadas.",
+          type: "success",
+        });
+        retornaTurmas(anoTable, semestreTable);
+        setSelected([]);
+      })
+      .catch((err) => {
+        const msg = err?.response?.data?.error || "Erro ao remover junção.";
+        setNotify({ isOpen: true, message: msg, type: "error" });
+      });
+  };
+
   const turmasFiltradasPorCampus = turmas.filter(
     (t) => normalizarCampus(t.campus) === viewCampus,
   );
@@ -491,10 +528,13 @@ const TurmasList = (props) => {
     const keyCount = {};
     const map = {};
 
+    // Junção é considerada "ativa" quando 2+ turmas compartilham o mesmo
+    // juncao_id no mesmo dia e horário — independente da disciplina (permite
+    // junção entre disciplinas diferentes).
     turmasFiltradasPorCampus.forEach((turma) => {
       const juncaoId = Number(turma.juncao) || 0;
       if (juncaoId <= 0) return;
-      const key = `${juncaoId}_${turma.codDisciplina || ""}_${turma.horarioInicio || ""}_${turma.horarioFim || ""}`;
+      const key = `${juncaoId}_${turma.diaDaSemana || ""}_${turma.horarioInicio || ""}_${turma.horarioFim || ""}`;
       keyCount[key] = (keyCount[key] || 0) + 1;
     });
 
@@ -505,7 +545,7 @@ const TurmasList = (props) => {
         return;
       }
 
-      const key = `${juncaoId}_${turma.codDisciplina || ""}_${turma.horarioInicio || ""}_${turma.horarioFim || ""}`;
+      const key = `${juncaoId}_${turma.diaDaSemana || ""}_${turma.horarioInicio || ""}_${turma.horarioFim || ""}`;
       map[turma._id] = (keyCount[key] || 0) > 1;
     });
 
@@ -881,6 +921,76 @@ const TurmasList = (props) => {
             </Container>
           </DialogContent>
         </Dialog>
+
+        {selected.length > 0 &&
+          (() => {
+            const selTurmas = turmas.filter((t) => selected.includes(t._id));
+            const diasDistintos = new Set(
+              selTurmas.map((t) => t.diaDaSemana),
+            ).size;
+            const horariosDistintos = new Set(
+              selTurmas.map((t) => `${t.horarioInicio}-${t.horarioFim}`),
+            ).size;
+            const mesmoSlot = diasDistintos === 1 && horariosDistintos === 1;
+            return (
+              <Paper
+                elevation={0}
+                variant="outlined"
+                sx={{
+                  p: 1.5,
+                  mb: 1.5,
+                  bgcolor: "#eef4ff",
+                  borderColor: "#3f6fd1",
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 1.5,
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <InfoOutlinedIcon fontSize="small" color="primary" />
+                    <Typography variant="body2">
+                      <b>{selected.length}</b> turma(s) selecionada(s). Use a
+                      junção para que turmas (mesmo de disciplinas diferentes)
+                      compartilhem a mesma sala no mesmo horário.
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                    {selected.length >= 2 && !mesmoSlot && (
+                      <Typography variant="caption" color="error">
+                        As turmas devem estar no mesmo dia e horário para a
+                        junção ter efeito.
+                      </Typography>
+                    )}
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      size="small"
+                      startIcon={<LinkIcon />}
+                      disabled={selected.length < 2}
+                      onClick={onAgruparJuncao}
+                    >
+                      Agrupar em junção
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      size="small"
+                      startIcon={<LinkOffIcon />}
+                      onClick={onDesagruparJuncao}
+                    >
+                      Desagrupar
+                    </Button>
+                  </Box>
+                </Box>
+              </Paper>
+            );
+          })()}
 
         <TblContainer
           sx={tableStyle}

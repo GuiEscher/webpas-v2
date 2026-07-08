@@ -72,7 +72,13 @@ const AgendaLinhas = (props) => {
 
   const formatTurmaComJuncao = (turmaObj) => {
     const turmaLabel = turmaObj?.turma || "";
-    return Number(turmaObj?.juncao) > 0 ? `${turmaLabel} (J)` : turmaLabel;
+    if (Number(turmaObj?.juncao) > 0) {
+      // juncaoLabel = ids das turmas unidas por "+" (ex.: "1003484-A+15245-B").
+      return turmaObj?.juncaoLabel
+        ? `${turmaLabel} (J: ${turmaObj.juncaoLabel})`
+        : `${turmaLabel} (J)`;
+    }
+    return turmaLabel;
   };
 
   return (

@@ -51,6 +51,15 @@ class TurmasDataService {
   limparDepartamentosFake() {
     return http.post("/turmas/limpar-departamentos-fake");
   }
+
+  // --- JUNÇÃO MANUAL ---
+  agruparJuncao(turmasIds) {
+    return http.post("/turmas/juncao/agrupar", { turmasIds });
+  }
+
+  desagruparJuncao(turmasIds) {
+    return http.post("/turmas/juncao/desagrupar", { turmasIds });
+  }
 }
 
 export default new TurmasDataService();
