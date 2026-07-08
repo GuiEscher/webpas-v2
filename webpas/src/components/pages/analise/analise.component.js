@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import ResultadosDataService from "../../../services/resultados";
 import PageHeader from "../../re-usable/page-header.component";
+import AlocarTurmaForm from "../../forms/alocarTurmaForm.component";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -8,6 +9,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 import WarningIcon from "@mui/icons-material/Warning";
 import InfoIcon from "@mui/icons-material/Info";
+import MeetingRoomIcon from "@mui/icons-material/MeetingRoom";
 import {
   Paper,
   Typography,
@@ -29,7 +31,13 @@ import {
   TableContainer,
   Chip,
   Divider,
+  Snackbar,
 } from "@mui/material";
+
+// Motivos de não-alocação em que faz sentido alocar manualmente (ex.: Pós).
+// Horário atípico não entra (não há slot definido); chefia/f12/junção são
+// intencionais.
+const MOTIVOS_ALOCAVEIS = ["poucoAlunos", "credZero", "solverFalhou"];
 
 const thisYear = new Date().getFullYear();
 
@@ -101,7 +109,7 @@ const MOTIVO_DESCRICAO = {
   },
 };
 
-const TabelaTurmas = ({ turmas, extraCols = [] }) => (
+const TabelaTurmas = ({ turmas, extraCols = [], onAlocar }) => (
   <TableContainer sx={{ maxHeight: 400 }}>
     <Table size="small" stickyHeader>
       <TableHead>
@@ -116,6 +124,9 @@ const TabelaTurmas = ({ turmas, extraCols = [] }) => (
           {extraCols.map((c) => (
             <TableCell key={c.key} sx={{ fontSize: "0.7rem", fontWeight: 600 }}>{c.label}</TableCell>
           ))}
+          {onAlocar && (
+            <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>Ação</TableCell>
+          )}
         </TableRow>
       </TableHead>
       <TableBody>
@@ -131,6 +142,20 @@ const TabelaTurmas = ({ turmas, extraCols = [] }) => (
             {extraCols.map((c) => (
               <TableCell key={c.key} sx={{ fontSize: "0.7rem" }}>{c.render(t)}</TableCell>
             ))}
+            {onAlocar && (
+              <TableCell>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="success"
+                  startIcon={<MeetingRoomIcon sx={{ fontSize: 16 }} />}
+                  sx={{ fontSize: "0.62rem", py: 0.2, whiteSpace: "nowrap" }}
+                  onClick={() => onAlocar(t)}
+                >
+                  Alocar
+                </Button>
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>
@@ -140,7 +165,7 @@ const TabelaTurmas = ({ turmas, extraCols = [] }) => (
 
 // Props opcionais: { embedded, ano, semestre, minAlunos }
 // Se embedded=true, omite o header e o bloco de parâmetros, e usa ano/semestre dos props
-const Analise = ({ embedded = false, ano: anoProp, semestre: semProp, minAlunos: minAlunosProp = 5 } = {}) => {
+const Analise = ({ embedded = false, ano: anoProp, semestre: semProp, minAlunos: minAlunosProp = 5, onResultadosChanged } = {}) => {
   const [anoLocal, setAnoLocal] = useState(anoProp || thisYear);
   const [semLocal, setSemLocal] = useState(semProp || 1);
   const [minAlunosLocal, setMinAlunosLocal] = useState(minAlunosProp);
@@ -152,10 +177,10 @@ const Analise = ({ embedded = false, ano: anoProp, semestre: semProp, minAlunos:
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
 
-  const rodar = async () => {
+  const rodar = async (manterDados = false) => {
     setLoading(true);
     setError(null);
-    setData(null);
+    if (!manterDados) setData(null);
     try {
       const res = await ResultadosDataService.getAnalise(Number(ano), Number(semestre), Number(minAlunos));
       setData(res.data);
@@ -163,6 +188,12 @@ const Analise = ({ embedded = false, ano: anoProp, semestre: semProp, minAlunos:
       setError(err.response?.data?.error || err.message);
     }
     setLoading(false);
+  };
+
+  // Chamado após uma alocação manual: atualiza a análise e avisa o quadro.
+  const handleAlocado = () => {
+    rodar(true);
+    if (onResultadosChanged) onResultadosChanged();
   };
 
   return (
@@ -237,13 +268,22 @@ const Analise = ({ embedded = false, ano: anoProp, semestre: semProp, minAlunos:
       {embedded && loading && <LinearProgress sx={{ mb: 2 }} />}
       {embedded && error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      {data && <AnaliseResultado data={data} />}
+      {data && <AnaliseResultado data={data} onAlocado={handleAlocado} />}
     </>
   );
 };
 
-const AnaliseResultado = ({ data }) => {
+const AnaliseResultado = ({ data, onAlocado }) => {
   const { totais, scores, categorias, solicitacoes, capacidadeExcedida, predioAux } = data;
+
+  const [alocarTurma, setAlocarTurma] = useState(null);
+  const [openAlocar, setOpenAlocar] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  const abrirAlocar = (turma) => {
+    setAlocarTurma(turma);
+    setOpenAlocar(true);
+  };
   const scoreColor = scores.geral >= 85 ? "success.main" : scores.geral >= 70 ? "warning.main" : "error.main";
   const scoreBg = scores.geral >= 85 ? "success.50" : scores.geral >= 70 ? "warning.50" : "error.50";
 
@@ -495,7 +535,17 @@ const AnaliseResultado = ({ data }) => {
                       ? [{ key: "par", label: "Horário do par alocado", render: (t) => t.pairHorario || "—" }]
                       : []
                   }
+                  onAlocar={
+                    MOTIVOS_ALOCAVEIS.includes(motivo) ? abrirAlocar : undefined
+                  }
                 />
+                {MOTIVOS_ALOCAVEIS.includes(motivo) && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                    Use <strong>"Alocar"</strong> para reservar manualmente uma
+                    sala livre para a turma (ex.: turmas de Pós-Graduação). A
+                    alocação aparece no quadro e na exportação.
+                  </Typography>
+                )}
               </AccordionDetails>
             </Accordion>
           );
@@ -580,6 +630,37 @@ const AnaliseResultado = ({ data }) => {
           </TableContainer>
         </Paper>
       )}
+
+      <AlocarTurmaForm
+        open={openAlocar}
+        onClose={() => setOpenAlocar(false)}
+        turma={alocarTurma}
+        onSuccess={(res) => {
+          setOpenAlocar(false);
+          setMsg({
+            severity: "success",
+            text: `Turma alocada em ${res?.dia || ""}/${res?.periodo || ""}.`,
+          });
+          if (onAlocado) onAlocado();
+        }}
+        onError={(m) => {
+          setOpenAlocar(false);
+          setMsg({ severity: "error", text: m });
+        }}
+      />
+
+      <Snackbar
+        open={!!msg}
+        autoHideDuration={4000}
+        onClose={() => setMsg(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        {msg ? (
+          <Alert onClose={() => setMsg(null)} severity={msg.severity} variant="filled" sx={{ width: "100%" }}>
+            {msg.text}
+          </Alert>
+        ) : undefined}
+      </Snackbar>
     </>
   );
 };

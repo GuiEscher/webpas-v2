@@ -757,7 +757,13 @@ const Agenda = (props) => {
             {tabValue === config.dias.length ? (
               // Tab de Análise
               <Box sx={{ p: 2 }}>
-                <Analise embedded ano={ano} semestre={semestre} minAlunos={5} />
+                <Analise
+                  embedded
+                  ano={ano}
+                  semestre={semestre}
+                  minAlunos={5}
+                  onResultadosChanged={() => retornaResultados(ano, semestre)}
+                />
               </Box>
             ) : formatoAgenda === "colunas" ? (
               <AgendaColunas

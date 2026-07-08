@@ -603,6 +603,71 @@ router.route("/update/:id").post(protect, (req, res) => {
     .catch((err) => res.status(400).json(err));
 });
 
+// =========================================================================
+// JUNÇÃO MANUAL — agrupar/desagrupar turmas pela ferramenta
+// Permite junção entre disciplinas DIFERENTES (o SIGA só junta a mesma).
+// Usa o mesmo campo `juncao`; números manuais começam em 90000 para não
+// colidirem com os juncao_id vindos do SIGA (faixa ~2500).
+// =========================================================================
+router.post("/juncao/agrupar", protect, async (req, res) => {
+  try {
+    const { turmasIds } = req.body;
+    if (!Array.isArray(turmasIds) || turmasIds.length < 2) {
+      return res
+        .status(400)
+        .json({ error: "Selecione ao menos 2 turmas para agrupar em junção." });
+    }
+    const turmas = await Turma.find({
+      _id: { $in: turmasIds },
+      user: req.user._id,
+    });
+    if (turmas.length !== turmasIds.length) {
+      return res
+        .status(404)
+        .json({ error: "Algumas turmas não foram encontradas." });
+    }
+
+    // Próximo número de junção: acima de qualquer existente e na faixa manual.
+    const anos = [...new Set(turmas.map((t) => t.ano))];
+    const sems = [...new Set(turmas.map((t) => t.semestre))];
+    const maxDoc = await Turma.find({
+      user: req.user._id,
+      ano: { $in: anos },
+      semestre: { $in: sems },
+    })
+      .sort({ juncao: -1 })
+      .limit(1);
+    const maxJuncao = maxDoc.length ? maxDoc[0].juncao || 0 : 0;
+    const novoJuncao = Math.max(maxJuncao + 1, 90000);
+
+    await Turma.updateMany(
+      { _id: { $in: turmasIds }, user: req.user._id },
+      { $set: { juncao: novoJuncao } },
+    );
+    res.json({ message: "Turmas agrupadas em junção", juncao: novoJuncao });
+  } catch (err) {
+    console.error("[juncao/agrupar] erro:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/juncao/desagrupar", protect, async (req, res) => {
+  try {
+    const { turmasIds } = req.body;
+    if (!Array.isArray(turmasIds) || turmasIds.length === 0) {
+      return res.status(400).json({ error: "Nenhuma turma informada." });
+    }
+    await Turma.updateMany(
+      { _id: { $in: turmasIds }, user: req.user._id },
+      { $set: { juncao: 0 } },
+    );
+    res.json({ message: "Junção removida das turmas" });
+  } catch (err) {
+    console.error("[juncao/desagrupar] erro:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- ROTA DE LIMPEZA DE DEPARTAMENTOS FAKE (LEGACY) ---
 // Usada para limpar turmas com departamentos residuais de antes da nova abordagem
 // (DEP-TERREO, TERREO-DEP-TERREO, etc.) e restaurar o departamento original.

@@ -326,6 +326,201 @@ router.post('/atribuir-sala/:resultadoId', async (req, res) => {
   }
 });
 
+// =========================================================================
+// ALOCAÇÃO MANUAL de turma não alocada (ex.: Pós-Graduação).
+// Determina período/slot a partir do horário da turma (mesma tolerância do
+// solver), lista salas livres e insere a alocação no Resultado correspondente
+// (cria o Resultado se ainda não existir). Cobre F12 (turma de 4h = 2 slots).
+// =========================================================================
+
+// Determina período e slot(s) de uma turma pelo horário. Retorna
+// { periodo, slots } (slots: [1], [2] ou [1,2]) ou null se não encaixar.
+function determinarPeriodoSlots(turma, config) {
+  const periodos = config.periodos || ['Manhã', 'Tarde', 'Noite'];
+  const ti = formatarHorarioParaDB(turma.horarioInicio);
+  const tf = formatarHorarioParaDB(turma.horarioFim);
+  const casa = (val, base) => gerarJanelaHorario(base).includes(val);
+  for (const p of periodos) {
+    const pc = config.horarios?.[p];
+    if (!pc) continue;
+    const h1i = formatarHorarioParaDB(pc['Início'].slot1);
+    const h1f = formatarHorarioParaDB(pc['Fim'].slot1);
+    const h2i = formatarHorarioParaDB(pc['Início'].slot2);
+    const h2f = formatarHorarioParaDB(pc['Fim'].slot2);
+    if (casa(ti, h1i) && casa(tf, h2f)) return { periodo: p, slots: [1, 2] };
+    if (casa(ti, h1i) && casa(tf, h1f)) return { periodo: p, slots: [1] };
+    if (casa(ti, h2i) && casa(tf, h2f)) return { periodo: p, slots: [2] };
+  }
+  return null;
+}
+
+const salaKeyStable = (s) => `${s?.predio}||${s?.numeroSala}`;
+
+router.get('/salas-livres-turma/:turmaId', async (req, res) => {
+  try {
+    const { user } = req;
+    const turma = await Turma.findOne({ _id: req.params.turmaId, user: user._id }).lean();
+    if (!turma) return res.status(404).json({ error: 'Turma não encontrada' });
+
+    const config = (await Config.find({ user: user._id }))[0];
+    if (!config) return res.status(400).json({ error: 'Configuração não encontrada.' });
+
+    const ps = determinarPeriodoSlots(turma, config);
+    if (!ps) {
+      return res.status(422).json({
+        error: 'O horário desta turma não encaixa em nenhum período padrão.',
+      });
+    }
+    const { periodo, slots } = ps;
+    const diaCanonico =
+      (config.dias || []).find(
+        (d) => normalizarString(d) === normalizarString(turma.diaDaSemana),
+      ) || turma.diaDaSemana;
+
+    const todas = await Sala.find({ user: user._id }).lean();
+    const disponiveis = todas.filter((s) =>
+      (s.disponibilidade || []).some(
+        (d) =>
+          normalizarString(d.dia) === normalizarString(diaCanonico) &&
+          d.periodo === periodo &&
+          d.disponivel === true,
+      ),
+    );
+
+    const resultado = await Resultado.findOne({
+      user: user._id,
+      ano: turma.ano,
+      semestre: turma.semestre,
+      diaDaSemana: diaCanonico,
+      periodo,
+    }).lean();
+
+    const ocupadas = new Set();
+    if (resultado) {
+      (resultado.alocacoes || [])
+        .filter((a) => slots.includes(a.horarioSlot) && a.sala)
+        .forEach((a) => ocupadas.add(salaKeyStable(a.sala)));
+    }
+
+    const livres = disponiveis
+      .filter((s) => s.predio !== 'predioAux')
+      .filter((s) => !ocupadas.has(salaKeyStable(s)));
+
+    res.json({ periodo, slots, dia: diaCanonico, livres });
+  } catch (err) {
+    console.error('[salas-livres-turma] erro:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/alocar-manual', async (req, res) => {
+  try {
+    const { user } = req;
+    const { turmaId, salaId } = req.body;
+    if (!turmaId || !salaId) {
+      return res.status(400).json({ error: 'turmaId e salaId são obrigatórios' });
+    }
+
+    const turma = await Turma.findOne({ _id: turmaId, user: user._id });
+    if (!turma) return res.status(404).json({ error: 'Turma não encontrada' });
+    const sala = await Sala.findOne({ _id: salaId, user: user._id });
+    if (!sala) return res.status(404).json({ error: 'Sala não encontrada' });
+
+    const config = (await Config.find({ user: user._id }))[0];
+    if (!config) return res.status(400).json({ error: 'Configuração não encontrada.' });
+
+    const ps = determinarPeriodoSlots(turma, config);
+    if (!ps) {
+      return res.status(422).json({
+        error: 'O horário desta turma não encaixa em nenhum período padrão.',
+      });
+    }
+    const { periodo, slots } = ps;
+    const diaCanonico =
+      (config.dias || []).find(
+        (d) => normalizarString(d) === normalizarString(turma.diaDaSemana),
+      ) || turma.diaDaSemana;
+
+    // Sala precisa estar disponível no dia/período
+    const disponivel = (sala.disponibilidade || []).some(
+      (d) =>
+        normalizarString(d.dia) === normalizarString(diaCanonico) &&
+        d.periodo === periodo &&
+        d.disponivel === true,
+    );
+    if (!disponivel) {
+      return res.status(409).json({
+        error: `Sala não está disponível em ${diaCanonico}/${periodo}.`,
+      });
+    }
+
+    let resultado = await Resultado.findOne({
+      user: user._id,
+      ano: turma.ano,
+      semestre: turma.semestre,
+      diaDaSemana: diaCanonico,
+      periodo,
+    });
+    if (!resultado) {
+      resultado = new Resultado({
+        user: user._id,
+        ano: turma.ano,
+        semestre: turma.semestre,
+        diaDaSemana: diaCanonico,
+        periodo,
+        alocacoes: [],
+      });
+    }
+
+    // Turma já alocada neste resultado?
+    const jaAlocada = (resultado.alocacoes || []).some(
+      (a) => String(a.turma?._id) === String(turmaId),
+    );
+    if (jaAlocada) {
+      return res.status(409).json({
+        error: 'Esta turma já está alocada neste dia/período.',
+      });
+    }
+
+    // Sala livre em TODOS os slots alvo (cobre F12)?
+    const salaNovaKey = salaKeyStable(sala);
+    const conflito = (resultado.alocacoes || []).find(
+      (a) =>
+        slots.includes(a.horarioSlot) &&
+        a.sala &&
+        salaKeyStable(a.sala) === salaNovaKey,
+    );
+    if (conflito) {
+      return res.status(409).json({
+        error: 'Sala já está ocupada neste horário. Recarregue a página.',
+      });
+    }
+
+    const turmaObj = turma.toObject();
+    const salaObj = sala.toObject();
+    slots.forEach((slot) => {
+      resultado.alocacoes.push({
+        turma: turmaObj,
+        sala: salaObj,
+        horarioSlot: slot,
+      });
+    });
+    resultado.markModified('alocacoes');
+    await resultado.save();
+
+    res.json({
+      message: 'Turma alocada manualmente',
+      periodo,
+      dia: diaCanonico,
+      slots,
+      resultadoId: resultado._id,
+    });
+  } catch (err) {
+    console.error('[alocar-manual] erro:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const alocationRemove = (arr,removeArray) => {
     let arrayTemp = []
     

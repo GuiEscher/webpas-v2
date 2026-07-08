@@ -411,11 +411,14 @@ async function dbtomodel(
     const juncaoGroups = {};
     const turmasFinais = [];
 
-    // Agrupa turmas com juncao > 0 usando juncao_id + codDisciplina.
-    // Isso tolera variações de horário no CSV e mantém a intenção da junção.
+    // Agrupa turmas com juncao > 0 SOMENTE pelo juncao_id.
+    // Antes a chave incluía codDisciplina, o que impedia junção entre
+    // disciplinas diferentes. Nos dados do SIGA nenhum juncao_id cruza
+    // disciplinas, então remover o codDisciplina não altera os grupos
+    // atuais e habilita a junção manual entre disciplinas distintas.
     turmaArray.forEach((turma) => {
       if (turma.juncao && turma.juncao > 0) {
-        const key = `${turma.juncao}_${turma.codDisciplina}`;
+        const key = `${turma.juncao}`;
         if (!juncaoGroups[key]) {
           juncaoGroups[key] = [];
         }
@@ -433,12 +436,22 @@ async function dbtomodel(
         return;
       }
 
-      // Representante estável: menor letra de turma (A antes de B, etc.)
-      group.sort((a, b) =>
-        String(a.turma || "").localeCompare(String(b.turma || ""), "pt-BR", {
-          sensitivity: "base",
-        }),
-      );
+      // Representante estável: menor letra de turma; desempata por
+      // codDisciplina e idTurma para ser determinístico mesmo entre
+      // disciplinas diferentes no mesmo grupo de junção.
+      group.sort((a, b) => {
+        const t = String(a.turma || "").localeCompare(
+          String(b.turma || ""),
+          "pt-BR",
+          { sensitivity: "base" },
+        );
+        if (t !== 0) return t;
+        const c = String(a.codDisciplina || "").localeCompare(
+          String(b.codDisciplina || ""),
+        );
+        if (c !== 0) return c;
+        return String(a.idTurma || "").localeCompare(String(b.idTurma || ""));
+      });
 
       const representante = group[0];
       let totalSomado = representante.totalTurma;
@@ -451,9 +464,20 @@ async function dbtomodel(
         });
       }
 
+      // Monta a representante como objeto simples: um campo fora do schema
+      // (juncaoLabel) não sobrevive à serialização de um documento Mongoose.
+      const repObj = representante.toObject
+        ? representante.toObject()
+        : { ...representante };
       // Representante recebe a soma dos alunos de todo o grupo
-      representante.totalTurma = totalSomado;
-      turmasFinais.push(representante);
+      repObj.totalTurma = totalSomado;
+      // Rótulo da junção: ids das turmas do grupo unidos por "+", para
+      // exibir no quadro (ex.: "247386+247388").
+      repObj.juncaoLabel = group
+        .map((t) => t.idTurma)
+        .filter(Boolean)
+        .join("+");
+      turmasFinais.push(repObj);
 
       console.log(
         `[dbtomodel] 🔗 Junção: ${representante.codDisciplina} ${representante.turma} (${representante.nomeDisciplina}) - ${group.length} turmas → totalTurma=${totalSomado}`,
