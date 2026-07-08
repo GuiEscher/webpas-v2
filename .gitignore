@@ -26,3 +26,9 @@ backend/.env
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# arquivos de dados locais (planilhas/CSV/PDF de entrada e resultado) — não versionar
+webpas/sorocaba-files/
+webpas/resultados/
+*.xlsm
+*.ods

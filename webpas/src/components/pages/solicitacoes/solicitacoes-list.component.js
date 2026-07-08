@@ -41,7 +41,18 @@ import ConfirmDialog from "../../re-usable/confirmDialog.component";
 import SolicitacoesService, {
   TIPOS_SOLICITACAO,
 } from "../../../services/solicitacoes";
+import TurmasDataService from "../../../services/turmas";
 import AjudaSolicitacoes from "../help/ajuda-solicitacoes.component";
+import { useCampus } from "../../../contexts/campus-context";
+
+// Comparação de campus tolerante a acento/caixa.
+const mesmoCampusSol = (a, b) => {
+  const canon = (s) =>
+    String(s || "São Carlos").toLowerCase().includes("sorocaba")
+      ? "sorocaba"
+      : "sao carlos";
+  return canon(a) === canon(b);
+};
 
 const tableRowCss = { "& .MuiTableCell-root": { padding: 1 } };
 const tableStyle = {
@@ -76,8 +87,12 @@ const chipColors = {
 
 const SolicitacoesList = (props) => {
   const { config, user, logout } = props;
+  const { campus } = useCampus();
 
   const [solicitacoes, setSolicitacoes] = useState([]);
+  // Turmas de Sorocaba com quadro definido no toggle (só exibição — geridas
+  // na lista de Turmas, não pelo sistema de solicitações).
+  const [quadroRows, setQuadroRows] = useState([]);
   const [openHelp, setOpenHelp] = useState(false);
   const [filterFn, setFilterFn] = useState({ fn: (items) => items });
   const [anos, setAnos] = useState([]);
@@ -120,8 +135,51 @@ const SolicitacoesList = (props) => {
 
   const retornaSolicitacoes = () => {
     const data = SolicitacoesService.getByAnoSemestre(anoTable, semestreTable);
-    setSolicitacoes(data);
+    // Mostra apenas as solicitações do campus selecionado (global).
+    setSolicitacoes(data.filter((s) => mesmoCampusSol(s.campus, campus)));
   };
+
+  // Re-filtra ao trocar de campus na barra lateral.
+  useEffect(() => {
+    retornaSolicitacoes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campus]);
+
+  // Busca turmas do campus atual com quadro definido no toggle (Verde/Branco)
+  // e monta linhas de exibição (Quadro Verde/Branco). Só leitura.
+  useEffect(() => {
+    TurmasDataService.getByAnoSemestre(anoTable, semestreTable)
+      .then((res) => {
+        const rows = (res.data || [])
+          .filter((t) => mesmoCampusSol(t.campus, campus))
+          .filter((t) => t.tipoQuadro === "Verde" || t.tipoQuadro === "Branco")
+          .map((t) => ({
+            turmaId: t._id,
+            idTurma: t.idTurma,
+            nomeDisciplina: t.nomeDisciplina,
+            turma: t.turma,
+            departamentoTurma: t.departamentoTurma,
+            tipoSolicitacao: t.tipoQuadro === "Verde" ? "qv" : "qb",
+            tipoSolicitacaoLabel:
+              t.tipoQuadro === "Verde" ? "Quadro Verde" : "Quadro Branco",
+            ano: t.ano,
+            semestre: t.semestre,
+            campus: t.campus,
+            diaDaSemana: t.diaDaSemana,
+            horarioInicio: t.horarioInicio,
+            horarioFim: t.horarioFim,
+            fromQuadro: true,
+          }));
+        setQuadroRows(rows);
+      })
+      .catch(() => setQuadroRows([]));
+  }, [anoTable, semestreTable, campus]);
+
+  // Lista exibida = solicitações reais + linhas de quadro (sem duplicar turma).
+  const linhas = React.useMemo(() => {
+    const ids = new Set(solicitacoes.map((s) => s.turmaId));
+    return [...solicitacoes, ...quadroRows.filter((q) => !ids.has(q.turmaId))];
+  }, [solicitacoes, quadroRows]);
 
   const retornaAnos = () => {
     const anoAtual = new Date().getFullYear();
@@ -152,7 +210,10 @@ const SolicitacoesList = (props) => {
 
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
-      const newSelecteds = recordsAfterPagingAndSorting().map((s) => s.turmaId);
+      // Não seleciona linhas de quadro (só leitura, sem ações).
+      const newSelecteds = recordsAfterPagingAndSorting()
+        .filter((s) => !s.fromQuadro)
+        .map((s) => s.turmaId);
       setSelected(newSelecteds);
       return;
     }
@@ -309,7 +370,7 @@ const SolicitacoesList = (props) => {
   };
 
   const { TblContainer, TblHead, TblPagination, recordsAfterPagingAndSorting } =
-    useTable(solicitacoes, headCells, filterFn);
+    useTable(linhas, headCells, filterFn);
 
   return (
     <>
@@ -419,7 +480,7 @@ const SolicitacoesList = (props) => {
         <br />
 
         {/* Resumo por tipo */}
-        {solicitacoes.length > 0 && (
+        {linhas.length > 0 && (
           <Box sx={{ px: 2, pb: 2, display: "flex", flexWrap: "wrap", gap: 1 }}>
             <Typography
               variant="caption"
@@ -428,7 +489,7 @@ const SolicitacoesList = (props) => {
               Resumo:
             </Typography>
             {TIPOS_SOLICITACAO.map((tipo) => {
-              const count = solicitacoes.filter(
+              const count = linhas.filter(
                 (s) => s.tipoSolicitacao === tipo.id,
               ).length;
               if (count === 0) return null;
@@ -446,7 +507,7 @@ const SolicitacoesList = (props) => {
               );
             })}
             <Chip
-              label={`Total: ${solicitacoes.length}`}
+              label={`Total: ${linhas.length}`}
               size="small"
               variant="outlined"
               sx={{ fontWeight: 600 }}
@@ -489,45 +550,55 @@ const SolicitacoesList = (props) => {
                   onClick={(event) => handleClick(event, sol.turmaId)}
                 >
                   <TableCell padding="checkbox">
-                    <Checkbox
-                      color="primary"
-                      checked={isItemSelected}
-                      inputProps={{ "aria-labelledby": labelId }}
-                    />
+                    {!sol.fromQuadro && (
+                      <Checkbox
+                        color="primary"
+                        checked={isItemSelected}
+                        inputProps={{ "aria-labelledby": labelId }}
+                      />
+                    )}
                   </TableCell>
                   <TableCell>
-                    <Box sx={{ display: "flex", gap: 0.5 }}>
-                      <Tooltip title="Aplicar (altera departamento)">
-                        <IconButton
-                          sx={{ padding: "4px" }}
-                          color="success"
-                          size="small"
-                          onClick={() => handleAplicarUma(sol.turmaId)}
-                        >
-                          <PlayArrowIcon fontSize="small" />
-                        </IconButton>
+                    {sol.fromQuadro ? (
+                      <Tooltip title="Quadro definido na lista de Turmas (toggle Verde/Branco)">
+                        <Typography variant="caption" color="textSecondary">
+                          via Turmas
+                        </Typography>
                       </Tooltip>
-                      <Tooltip title="Reverter (restaura departamento original)">
-                        <IconButton
-                          sx={{ padding: "4px" }}
-                          color="warning"
-                          size="small"
-                          onClick={() => handleReverterUma(sol.turmaId)}
-                        >
-                          <UndoIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Remover solicitação">
-                        <IconButton
-                          sx={{ padding: "4px" }}
-                          color="error"
-                          size="small"
-                          onClick={() => handleRemoveSolicitacao(sol.turmaId)}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
+                    ) : (
+                      <Box sx={{ display: "flex", gap: 0.5 }}>
+                        <Tooltip title="Aplicar (altera departamento)">
+                          <IconButton
+                            sx={{ padding: "4px" }}
+                            color="success"
+                            size="small"
+                            onClick={() => handleAplicarUma(sol.turmaId)}
+                          >
+                            <PlayArrowIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Reverter (restaura departamento original)">
+                          <IconButton
+                            sx={{ padding: "4px" }}
+                            color="warning"
+                            size="small"
+                            onClick={() => handleReverterUma(sol.turmaId)}
+                          >
+                            <UndoIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Remover solicitação">
+                          <IconButton
+                            sx={{ padding: "4px" }}
+                            color="error"
+                            size="small"
+                            onClick={() => handleRemoveSolicitacao(sol.turmaId)}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    )}
                   </TableCell>
                   <TableCell>{sol.idTurma}</TableCell>
                   <TableCell>{sol.nomeDisciplina}</TableCell>
@@ -558,7 +629,7 @@ const SolicitacoesList = (props) => {
         <TblPagination />
       </TableContainer>
 
-      {solicitacoes.length === 0 && (
+      {linhas.length === 0 && (
         <Paper sx={{ p: 4, textAlign: "center", mt: 2 }}>
           <AccessibleIcon sx={{ fontSize: 60, color: "#ccc", mb: 2 }} />
           <Typography variant="h6" color="textSecondary">

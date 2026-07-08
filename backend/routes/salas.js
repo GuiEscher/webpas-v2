@@ -5,6 +5,7 @@ const Config = require('../models/config.model');
 const { protect } = require('../middleware/auth');
 const multer = require('multer');
 const XLSX = require('xlsx');
+const { canonizarCampus } = require('../utils/campus');
 
 // Configuração do multer para buffer em memória
 const storage = multer.memoryStorage();
@@ -18,6 +19,8 @@ router.post('/uploadPlanilha', protect, upload.single('file'), async (req, res) 
 
     try {
         const userId = req.user._id;
+        // Campus do upload (default São Carlos mantém comportamento atual).
+        const campus = canonizarCampus(req.body.campus || req.body.campusSelecionado);
         const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
         const sheetName = 'AT';
         const salasSheet = workbook.Sheets[sheetName];
@@ -57,8 +60,8 @@ router.post('/uploadPlanilha', protect, upload.single('file'), async (req, res) 
         const dias = config.dias || ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira'];
         const periodMap = { M: 'Manhã', T: 'Tarde', N: 'Noite' };
 
-        // Deletar salas existentes para este usuário (substituição completa)
-        await Sala.deleteMany({ user: userId });
+        // Deletar salas existentes DESTE campus (não mexe no outro campus)
+        await Sala.deleteMany({ user: userId, campus });
 
         // Extrair dados a partir da linha inicial
         for (let R = startRow; R <= range.e.r; ++R) {
@@ -96,6 +99,7 @@ router.post('/uploadPlanilha', protect, upload.single('file'), async (req, res) 
                     predio,
                     numeroSala,
                     capacidade: Cap,
+                    campus,
                     disponibilidade,
                     tipoQuadro: 'Indiferente', // Default para importação via Planilha
                     terreo: false, // Default
@@ -121,7 +125,11 @@ router.post('/uploadPlanilha', protect, upload.single('file'), async (req, res) 
 
 router.route('/').get(protect, (req, res) => {
     const user = req.user;
-    Sala.find({ user: user._id })
+    // Filtro opcional por campus (?campus=Sorocaba). Sem o parâmetro, retorna
+    // todas as salas do usuário — mantém o comportamento existente.
+    const filtro = { user: user._id };
+    if (req.query.campus) filtro.campus = canonizarCampus(req.query.campus);
+    Sala.find(filtro)
         .then(salas => res.json(salas))
         .catch(err => res.status(400).json('Error: ' + err));
 });

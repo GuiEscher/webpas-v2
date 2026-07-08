@@ -25,7 +25,9 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import ScienceIcon from "@mui/icons-material/Science";
 import AssessmentIcon from "@mui/icons-material/Assessment";
-import { Grid } from "@mui/material";
+import LocationCityIcon from "@mui/icons-material/LocationCity";
+import { Grid, Box, ToggleButton, ToggleButtonGroup, Tooltip, Chip } from "@mui/material";
+import { useCampus } from "../../contexts/campus-context";
 import {
   Link as RouterLink,
   Route,
@@ -134,7 +136,10 @@ const Drawer = styled(MuiDrawer, {
 const Navbar = (props) => {
   const { open, setOpen } = props;
   const { logout, user } = useAuth();
+  const { campus, setCampus } = useCampus();
   const theme = useTheme();
+
+  const campusCor = campus === "Sorocaba" ? "#00897b" : "#1565c0";
 
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -170,20 +175,29 @@ const Navbar = (props) => {
               </IconButton>
             </Grid>
             <Grid item xs={37}>
-              <Link
-                to="/"
-                variant="h1"
-                style={{ textDecoration: "none" }}
-                color="#fff"
-              >
-                <Typography
-                  variant="h5"
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <Link
+                  to="/"
+                  variant="h1"
                   style={{ textDecoration: "none" }}
                   color="#fff"
                 >
-                  WebPAS
-                </Typography>
-              </Link>
+                  <Typography
+                    variant="h5"
+                    style={{ textDecoration: "none" }}
+                    color="#fff"
+                  >
+                    WebPAS
+                  </Typography>
+                </Link>
+                {/* Indicador global de campus (sempre visível) */}
+                <Chip
+                  icon={<LocationCityIcon sx={{ color: "#fff !important" }} />}
+                  label={campus}
+                  size="small"
+                  sx={{ bgcolor: campusCor, color: "#fff", fontWeight: 600 }}
+                />
+              </Box>
             </Grid>
             <Grid item xs={2}>
               <Button
@@ -211,6 +225,44 @@ const Navbar = (props) => {
             )}
           </IconButton>
         </DrawerHeader>
+        <Divider />
+        {/* --- SELETOR GLOBAL DE CAMPUS --- */}
+        {open ? (
+          <Box sx={{ px: 1.5, py: 1.5 }}>
+            <Typography
+              variant="caption"
+              sx={{ fontWeight: 700, color: campusCor, display: "block", mb: 0.5 }}
+            >
+              CAMPUS
+            </Typography>
+            <ToggleButtonGroup
+              value={campus}
+              exclusive
+              size="small"
+              fullWidth
+              onChange={(e, val) => { if (val) setCampus(val); }}
+              sx={{
+                "& .MuiToggleButton-root": { textTransform: "none", fontSize: "0.72rem", py: 0.4 },
+                "& .Mui-selected": { color: "#fff !important", bgcolor: `${campusCor} !important` },
+                "& .Mui-selected:hover": { bgcolor: `${campusCor} !important` },
+              }}
+            >
+              <ToggleButton value="São Carlos">São Carlos</ToggleButton>
+              <ToggleButton value="Sorocaba">Sorocaba</ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+        ) : (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
+            <Tooltip title={`Campus: ${campus} (clique para trocar)`} placement="right">
+              <IconButton
+                onClick={() => setCampus(campus === "Sorocaba" ? "São Carlos" : "Sorocaba")}
+                sx={{ color: campusCor }}
+              >
+                <LocationCityIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
         <Divider />
         <List>
           <ListItemLink to="/turmas" primary="Turmas" icon={<SchoolIcon />} />

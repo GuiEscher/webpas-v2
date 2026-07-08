@@ -143,6 +143,16 @@ const AgendaCampos = (props) => {
               }
               label="Créditos"
             />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={state.tipoQuadro}
+                  onChange={handleChange}
+                  name="tipoQuadro"
+                />
+              }
+              label="Tipo de Quadro (Sorocaba)"
+            />
           </FormGroup>
         </FormControl>
       </Box>

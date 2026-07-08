@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import TurmaForm from "../../forms/turmaForm.component";
 import FileFormTurma from "../../forms/fileFormTurma.component";
 import PageHeader from "../../re-usable/page-header.component";
+import { useCampus } from "../../../contexts/campus-context";
 import SchoolIcon from "@mui/icons-material/School";
 import {
   Modal,
@@ -147,7 +148,7 @@ const TurmasList = (props) => {
   const [listaErros, setListaErros] = useState([]);
   const [openErros, setOpenErros] = useState(false);
 
-  const [viewCampus, setViewCampus] = useState("São Carlos");
+  const { campus: viewCampus, setCampus } = useCampus();
   const [juncaoFilter, setJuncaoFilter] = useState("todas");
   const [pendingChanges, setPendingChanges] = useState({});
   const [saving, setSaving] = useState(false);
@@ -355,12 +356,10 @@ const TurmasList = (props) => {
 
   const handleDiscardChanges = () => setPendingChanges({});
 
-  const handleViewCampusChange = (event, newView) => {
-    if (newView !== null) {
-      setViewCampus(newView);
-      setSelected([]);
-    }
-  };
+  // Campus agora é global (contexto). Ao trocar, limpa a seleção de linhas.
+  useEffect(() => {
+    setSelected([]);
+  }, [viewCampus]);
 
   const handleJuncaoFilterChange = (event, newFilter) => {
     if (newFilter !== null) {
@@ -452,7 +451,7 @@ const TurmasList = (props) => {
       setAnoTable(uploadContext.ano);
       setSemestreTable(uploadContext.semestre);
       if (uploadContext.campus) {
-        setViewCampus(normalizarCampus(uploadContext.campus));
+        setCampus(normalizarCampus(uploadContext.campus));
       }
       retornaTurmas(uploadContext.ano, uploadContext.semestre);
       return;
@@ -675,16 +674,6 @@ const TurmasList = (props) => {
                 gap: 1,
               }}
             >
-              <ToggleButtonGroup
-                color="primary"
-                value={viewCampus}
-                exclusive
-                onChange={handleViewCampusChange}
-                size="small"
-              >
-                <ToggleButton value="São Carlos">São Carlos</ToggleButton>
-                <ToggleButton value="Sorocaba">Sorocaba</ToggleButton>
-              </ToggleButtonGroup>
               <ToggleButtonGroup
                 color="primary"
                 value={juncaoFilter}
@@ -1190,7 +1179,13 @@ const TurmasList = (props) => {
           </MenuItem>
         )}
         <Divider />
-        {TIPOS_SOLICITACAO.map((tipo) => (
+        {TIPOS_SOLICITACAO.filter((tipo) =>
+          // Sorocaba só usa Térreo e Quadro (Verde/Branco); os demais tipos
+          // (prancheta, lab, esp-norte/sul) são de São Carlos.
+          normalizarCampus(viewCampus) === "Sorocaba"
+            ? ["terreo", "qv", "qb"].includes(tipo.id)
+            : true,
+        ).map((tipo) => (
           <MenuItem
             key={tipo.id}
             onClick={() => handleAddSolicitacao(tipo.id)}

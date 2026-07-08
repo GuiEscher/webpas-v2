@@ -5,8 +5,11 @@ const Schema = mongoose.Schema
 const salaSchema = new Schema({
     predio: {type:String, required:true, index:true},
     numeroSala:{type:String, required: true},
-    capacidade:{type:Number,required:true}, 
+    capacidade:{type:Number,required:true},
     tipoQuadro: { type: String, enum: ['Verde', 'Branco', 'Indiferente'], default: 'Indiferente' },
+    // Campus da sala. Default "São Carlos" para manter os dados existentes
+    // (todos de São Carlos) sem migração de valor no schema.
+    campus: { type: String, trim: true, default: 'São Carlos' },
     disponibilidade:[{
         dia:{type:String,required:true},
         periodo:{type:String,required:true},
@@ -20,16 +23,15 @@ const salaSchema = new Schema({
     user:{type:mongoose.Types.ObjectId,ref:'User',required:true}
 })
 
-salaSchema.index({predio: 1,numeroSala: 1,user:1}, {unique: true})
+// Índice único inclui campus: permite que São Carlos e Sorocaba tenham
+// prédios/salas com o mesmo nome sem colidir.
+salaSchema.index({predio: 1,numeroSala: 1,campus: 1,user:1}, {unique: true})
 
 const Sala = mongoose.model('Sala',salaSchema)
 
-Sala.on('index', function(err) {
-    if (err) {
-        console.error('Salas: User index error: %s', err);
-    } else {
-        console.info('Salas: User indexing complete');
-    }
-});
+// Sincroniza índices (remove o índice único antigo sem campus e cria o novo).
+Sala.syncIndexes()
+    .then(() => console.info('Salas: Índices sincronizados com sucesso.'))
+    .catch((err) => console.error('Salas: Erro ao sincronizar índices:', err));
 
 module.exports = Sala

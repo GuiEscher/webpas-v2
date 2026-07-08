@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const Turma = require("../models/turma.model");
 const { protect } = require("../middleware/auth");
+const { campusRegex } = require("../utils/campus");
 const multer = require("multer");
 const csv = require("csv-parser");
 const { Readable } = require("stream");
@@ -420,21 +421,16 @@ router.route("/").get(protect, (req, res) => {
 
 router.route("/d/").get(protect, (req, res) => {
   const user = req.user;
-  Turma.find({ user: user._id })
+  // Filtro opcional por campus (?campus=Sorocaba). Sem o parâmetro, retorna
+  // os departamentos de todos os campi (comportamento original).
+  const filtro = { user: user._id };
+  if (req.query.campus) filtro.campus = campusRegex(req.query.campus);
+  Turma.find(filtro)
     .distinct("departamentoOferta")
     .then((departamentosOferta) => {
-      // DEBUG: Log raw department values from DB
-      console.log(
-        `[GET /d/] departamentoOferta raw:`,
-        departamentosOferta.slice(0, 20),
-      );
-      Turma.find({ user: user._id })
+      Turma.find(filtro)
         .distinct("departamentoTurma")
         .then((departamentosTurma) => {
-          console.log(
-            `[GET /d/] departamentoTurma raw:`,
-            departamentosTurma.slice(0, 20),
-          );
           const departamentos = arrayUnique(
             departamentosOferta.concat(departamentosTurma),
           );

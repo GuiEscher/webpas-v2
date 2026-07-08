@@ -80,6 +80,13 @@ const AgendaColunas = (props) => {
           <Grid item xs={2}>
             <Typography sx={tableHeadCss}>Sala</Typography>
           </Grid>
+          {state.tipoQuadro ? (
+            <Grid item xs={2}>
+              <Typography sx={tableHeadCss}>Tipo de Quadro</Typography>
+            </Grid>
+          ) : (
+            <></>
+          )}
           {state.capacidade ? (
             <Grid item xs={2}>
               <Typography sx={tableHeadCss}>Capacidade</Typography>
@@ -226,6 +233,18 @@ const AgendaColunas = (props) => {
                     {alocacao.sala.numeroSala}
                   </Typography>
                 </Grid>
+                {state.tipoQuadro ? (
+                  <Grid item xs={2}>
+                    <Typography sx={tableRowCss}>
+                      {alocacao.sala.tipoQuadro &&
+                      alocacao.sala.tipoQuadro !== "Indiferente"
+                        ? alocacao.sala.tipoQuadro
+                        : "—"}
+                    </Typography>
+                  </Grid>
+                ) : (
+                  <></>
+                )}
                 {state.capacidade ? (
                   <Grid item xs={2}>
                     <Typography sx={tableRowCss}>

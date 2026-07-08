@@ -8,6 +8,9 @@ const Sala = require('../models/sala.model')
 const Config = require('../models/config.model')
 const Distancia = require('../models/distancia.model')
 const { protect } = require('../middleware/auth')
+const { determinarPeriodoSlots } = require('../utils/periodo-slots')
+const { mesmoCampus, campusRegex } = require('../utils/campus')
+const { isImportacaoInconsistente } = require('../utils/analise-helpers')
 
 // =========================================================================
 // ROTA DE ANÁLISE — DECLARADA NO TOPO para não conflitar com /:ano/:semestre/:dia
@@ -37,6 +40,9 @@ router.get('/analise/:ano/:semestre', protect, async (req, res) => {
       return res.status(400).json({ error: 'Ano/Semestre inválidos' });
     }
     const minAlunos = parseInt(req.query.minAlunos) || 5;
+    // Filtro opcional por campus (?campus=Sorocaba). Sem o parâmetro, analisa
+    // todos os campi (comportamento original).
+    const campus = req.query.campus;
 
     const configs = await Config.find({ user: user._id });
     const config = configs[0];
@@ -56,21 +62,28 @@ router.get('/analise/:ano/:semestre', protect, async (req, res) => {
       gerarJanelaHorario(h1i).forEach((i) => gerarJanelaHorario(h2f).forEach((f) => combosValidos.add(i + '-' + f)));
     });
 
-    const todasTurmas = await Turma.find({ ano, semestre, user: user._id }).lean();
+    const filtroTurmas = { ano, semestre, user: user._id };
+    if (campus) filtroTurmas.campus = campusRegex(campus);
+    const todasTurmas = await Turma.find(filtroTurmas).lean();
     const resultados = await Resultado.find({ ano, semestre, user: user._id }).lean();
     const todasAlocacoes = [];
     resultados.forEach((r) => {
-      (r.alocacoes || []).forEach((a) => todasAlocacoes.push({
-        ...a,
-        diaDaSemana: r.diaDaSemana,
-        periodo: r.periodo,
-      }));
+      (r.alocacoes || []).forEach((a) => {
+        // Resultado é compartilhado entre campi; considera só o campus pedido.
+        if (campus && !mesmoCampus(a.turma?.campus, campus)) return;
+        todasAlocacoes.push({
+          ...a,
+          diaDaSemana: r.diaDaSemana,
+          periodo: r.periodo,
+        });
+      });
     });
     const idsAlocados = new Set(todasAlocacoes.map((a) => String(a.turma?._id)));
 
     const categorias = {
       alocadas: [],
       naoAlocadas: {
+        importacaoInconsistente: [],
         credZero: [],
         alocadoChefia: [],
         poucoAlunos: [],
@@ -80,6 +93,9 @@ router.get('/analise/:ano/:semestre', protect, async (req, res) => {
         solverFalhou: [],
       },
     };
+    // Dias válidos (normalizados) para detectar linhas de CSV desalinhadas
+    // (ex.: vírgula não-escapada no nome empurra as colunas e o dia vira "false").
+    const diasValidos = new Set((config.dias || []).map((d) => normalizarString(d)));
     const byCodTurmaDia = {};
     todasTurmas.forEach((t) => {
       const key = `${t.codDisciplina}|${t.turma}|${t.diaDaSemana}`;
@@ -95,6 +111,9 @@ router.get('/analise/:ano/:semestre', protect, async (req, res) => {
 
     todasTurmas.forEach((t) => {
       if (idsAlocados.has(String(t._id))) { categorias.alocadas.push(t); return; }
+      // Dados inconsistentes de importação (linha de CSV desalinhada por
+      // vírgula no nome): dia inválido OU horário não-numérico.
+      if (isImportacaoInconsistente(t, diasValidos)) { categorias.naoAlocadas.importacaoInconsistente.push(t); return; }
       if ((t.creditosAula || 0) <= 0) { categorias.naoAlocadas.credZero.push(t); return; }
       if (t.alocadoChefia === true) { categorias.naoAlocadas.alocadoChefia.push(t); return; }
       if ((t.totalTurma || 0) < minAlunos && !(Number(t.juncao) > 0)) { categorias.naoAlocadas.poucoAlunos.push(t); return; }
@@ -128,8 +147,15 @@ router.get('/analise/:ano/:semestre', protect, async (req, res) => {
       if (!t || !s) return;
       if (t.solicitacao) {
         const atende = salaAtendeSolicitacaoAnalise(s, t.solicitacao);
-        if (atende) solicitacoes.atendidas.push({ alocacao: a });
-        else solicitacoes.naoAtendidas.push({ alocacao: a });
+        const entrada = { alocacao: a, tipo: t.solicitacao };
+        if (atende) solicitacoes.atendidas.push(entrada);
+        else solicitacoes.naoAtendidas.push(entrada);
+      }
+      // Quadro (Sorocaba): a turma exige Verde/Branco e a sala deve ter o mesmo.
+      if (t.tipoQuadro === 'Verde' || t.tipoQuadro === 'Branco') {
+        const entrada = { alocacao: a, tipo: `Quadro ${t.tipoQuadro}` };
+        if (s.tipoQuadro === t.tipoQuadro) solicitacoes.atendidas.push(entrada);
+        else solicitacoes.naoAtendidas.push(entrada);
       }
       if ((t.totalTurma || 0) > (s.capacidade || 0)) {
         capacidadeExcedida.push({ alocacao: a, excesso: (t.totalTurma || 0) - (s.capacidade || 0) });
@@ -153,6 +179,7 @@ router.get('/analise/:ano/:semestre', protect, async (req, res) => {
         alocadas: categorias.alocadas.length,
         totalAlocacoesGeradas: todasAlocacoes.length,
         naoAlocadasPorMotivo: {
+          importacaoInconsistente: categorias.naoAlocadas.importacaoInconsistente.length,
           credZero: categorias.naoAlocadas.credZero.length,
           alocadoChefia: categorias.naoAlocadas.alocadoChefia.length,
           poucoAlunos: categorias.naoAlocadas.poucoAlunos.length,
@@ -332,27 +359,6 @@ router.post('/atribuir-sala/:resultadoId', async (req, res) => {
 // solver), lista salas livres e insere a alocação no Resultado correspondente
 // (cria o Resultado se ainda não existir). Cobre F12 (turma de 4h = 2 slots).
 // =========================================================================
-
-// Determina período e slot(s) de uma turma pelo horário. Retorna
-// { periodo, slots } (slots: [1], [2] ou [1,2]) ou null se não encaixar.
-function determinarPeriodoSlots(turma, config) {
-  const periodos = config.periodos || ['Manhã', 'Tarde', 'Noite'];
-  const ti = formatarHorarioParaDB(turma.horarioInicio);
-  const tf = formatarHorarioParaDB(turma.horarioFim);
-  const casa = (val, base) => gerarJanelaHorario(base).includes(val);
-  for (const p of periodos) {
-    const pc = config.horarios?.[p];
-    if (!pc) continue;
-    const h1i = formatarHorarioParaDB(pc['Início'].slot1);
-    const h1f = formatarHorarioParaDB(pc['Fim'].slot1);
-    const h2i = formatarHorarioParaDB(pc['Início'].slot2);
-    const h2f = formatarHorarioParaDB(pc['Fim'].slot2);
-    if (casa(ti, h1i) && casa(tf, h2f)) return { periodo: p, slots: [1, 2] };
-    if (casa(ti, h1i) && casa(tf, h1f)) return { periodo: p, slots: [1] };
-    if (casa(ti, h2i) && casa(tf, h2f)) return { periodo: p, slots: [2] };
-  }
-  return null;
-}
 
 const salaKeyStable = (s) => `${s?.predio}||${s?.numeroSala}`;
 
@@ -640,15 +646,17 @@ router.route('/calculalista').post(async (req, res) => {
     const minAlunos = req.body.minAlunos
     const mipGap = req.body.mipGap
     const tmLim = req.body.tmLim
+    // Campus a processar. Default São Carlos mantém o comportamento existente.
+    const campus = req.body.campus || 'São Carlos'
     const {user} = req
-    
+
     if (isNaN(ano) || isNaN(semestre)) return res.status(400).json({ error: 'Ano/Semestre inválidos' });
-    
+
     let resultObj = {}
 
     const listaDePromises = lista.map(async (unidade)=>{
         try {
-            const modelo = await dbtomodel(ano,semestre,unidade.periodo,unidade.dia,user,predioAux,minAlunos)
+            const modelo = await dbtomodel(ano,semestre,unidade.periodo,unidade.dia,user,predioAux,minAlunos,campus)
             const produto = await resolve(modelo,delta,mipGap,tmLim)
             const alocacoes = await trataresultado(modelo,produto)
 
@@ -659,14 +667,25 @@ router.route('/calculalista').post(async (req, res) => {
                 resultObj[unidade.dia][unidade.periodo] = true;
             }
 
-            const updateResult = await Resultado.findOneAndUpdate({
+            // Preserva as alocações do OUTRO campus que já estavam salvas neste
+            // dia/período — rodar Sorocaba não apaga São Carlos e vice-versa.
+            const existente = await Resultado.findOne({
+                user:user._id, ano, semestre,
+                diaDaSemana:unidade.dia, periodo:unidade.periodo,
+            });
+            const alocacoesOutroCampus = (existente?.alocacoes || []).filter(
+                (a) => !mesmoCampus(a.turma?.campus, campus),
+            );
+            const alocacoesFinais = alocacoesOutroCampus.concat(alocacoes);
+
+            await Resultado.findOneAndUpdate({
                 user:user._id,
                 ano:ano,
                 semestre:semestre,
                 diaDaSemana:unidade.dia,
                 periodo:unidade.periodo
-            },{alocacoes:alocacoes},{upsert:true});
-            console.log(`SAVE /calculalista: Upsert para ${ano}/${semestre}/${unidade.dia}/${unidade.periodo}, alocacoes=${alocacoes.length}, user=${user._id} (novo doc? ${updateResult ? 'Sim' : 'Não'})`);
+            },{alocacoes:alocacoesFinais},{upsert:true});
+            console.log(`SAVE /calculalista: ${ano}/${semestre}/${unidade.dia}/${unidade.periodo} campus=${campus}, novas=${alocacoes.length}, preservadas(outro campus)=${alocacoesOutroCampus.length}`);
 
         } catch (error) {
             console.log(error)
@@ -677,7 +696,7 @@ router.route('/calculalista').post(async (req, res) => {
     })
 
     await Promise.all(listaDePromises)
-    console.log (`Otimização concluida para ${ano}/${semestre}`)
+    console.log (`Otimização concluida para ${ano}/${semestre} (campus ${campus})`)
     return res.json(resultObj)
 })
 
@@ -687,21 +706,45 @@ router.route('/id/:id').get((req,res)=>{
         .catch(err => res.status(400).json('Error: '+ err))
 })
 
-router.route('/delete/:ano/:semestre').delete((req, res) => {
+router.route('/delete/:ano/:semestre').delete(async (req, res) => {
     const { user } = req;
     if (!user) return res.status(401).json({ error: 'Usuário não autenticado' });
     const ano = parseInt(req.params.ano);  // Garante número
     const semestre = parseInt(req.params.semestre);
     if (isNaN(ano) || isNaN(semestre)) return res.status(400).json({ error: 'Ano/Semestre inválidos' });
-    Resultado.deleteMany({ ano, semestre, user: user._id })
-        .then(deleted => {
+
+    try {
+        // Sem campus: apaga tudo do semestre (comportamento original).
+        if (!req.query.campus) {
+            const deleted = await Resultado.deleteMany({ ano, semestre, user: user._id });
             console.log(`DELETE: Apagados ${deleted.deletedCount} resultados para ${ano}/${semestre}, user ${user._id}`);
-            res.json({ message: `Apagados ${deleted.deletedCount} resultados` });
-        })
-        .catch(err => {
-            console.error('Erro DELETE resultados:', err);
-            res.status(400).json({ error: err.message });
-        });
+            return res.json({ message: `Apagados ${deleted.deletedCount} resultados` });
+        }
+
+        // Com campus: remove APENAS as alocações daquele campus de cada documento,
+        // preservando o outro campus. Apaga o doc que ficar vazio.
+        const campus = req.query.campus;
+        const docs = await Resultado.find({ ano, semestre, user: user._id });
+        let docsAlterados = 0, docsRemovidos = 0;
+        for (const doc of docs) {
+            const restantes = (doc.alocacoes || []).filter((a) => !mesmoCampus(a.turma?.campus, campus));
+            if (restantes.length === (doc.alocacoes || []).length) continue; // nada desse campus
+            if (restantes.length === 0) {
+                await Resultado.deleteOne({ _id: doc._id });
+                docsRemovidos++;
+            } else {
+                doc.alocacoes = restantes;
+                doc.markModified('alocacoes');
+                await doc.save();
+                docsAlterados++;
+            }
+        }
+        console.log(`DELETE campus=${campus}: ${docsRemovidos} docs removidos, ${docsAlterados} ajustados (${ano}/${semestre})`);
+        return res.json({ message: `Resultados de ${campus} apagados` });
+    } catch (err) {
+        console.error('Erro DELETE resultados:', err);
+        return res.status(400).json({ error: err.message });
+    }
 });
 
 router.route('/:id').delete((req,res)=>{

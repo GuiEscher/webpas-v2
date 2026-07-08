@@ -6,6 +6,7 @@ const Sala = require('../models/sala.model');
 const { protect } = require('../middleware/auth');
 const multer = require('multer');
 const XLSX = require('xlsx');
+const { canonizarCampus } = require('../utils/campus');
 
 // Configuração do multer para buffer em memória
 const storage = multer.memoryStorage();
@@ -19,6 +20,7 @@ router.post('/uploadPlanilha', protect, upload.single('file'), async (req, res) 
 
     try {
         const userId = req.user._id;
+        const campus = canonizarCampus(req.body.campus || req.body.campusSelecionado);
         const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
         const sheetName = 'Distancias';
         const distSheet = workbook.Sheets[sheetName];
@@ -40,8 +42,8 @@ router.post('/uploadPlanilha', protect, upload.single('file'), async (req, res) 
 
         const distanciasParaSalvar = [];
 
-        // Deletar distâncias existentes para este usuário (substituição completa)
-        await Distancia.deleteMany({ user: userId });
+        // Deletar distâncias existentes DESTE campus (não mexe no outro campus)
+        await Distancia.deleteMany({ user: userId, campus });
 
         // Extrair dados a partir da linha 1 (2-index)
         for (let R = 1; R <= range.e.r; ++R) {
@@ -68,6 +70,7 @@ router.post('/uploadPlanilha', protect, upload.single('file'), async (req, res) 
                             predio,
                             departamento,
                             valorDist,
+                            campus,
                             user: userId
                         });
                     }

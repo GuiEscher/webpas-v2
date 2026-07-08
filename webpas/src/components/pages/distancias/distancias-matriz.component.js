@@ -33,6 +33,8 @@ import { Checkbox } from "@mui/material";
 import FileFormDistancias from "../../forms/fileFormDistancia.component";
 import { Alert } from "@mui/material";
 import AjudaDistancias from "../help/ajuda-distancias.component";
+import { useCampus } from "../../../contexts/campus-context";
+import { mesmoCampus } from "../../../utils/campus";
 
 const tableRowCss = {
   "& .MuiTableCell-root": {
@@ -72,6 +74,7 @@ const normalizarDept = (dept) => {
 
 const DistanciasMatriz = (props) => {
   const { user, logout, config } = props;
+  const { campus } = useCampus();
 
   const [distancias, setDistancias] = useState([]);
   const [predios, setPredios] = useState([]);
@@ -115,7 +118,8 @@ const DistanciasMatriz = (props) => {
       retornaDistancias();
       retornaDepartamentosTurmas();
     }
-  }, [notify, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notify, user, campus]);
 
   // --- USEEFFECT PARA UNIÃO: Roda quando depts de turmas OU distâncias mudam ---
   useEffect(() => {
@@ -164,7 +168,7 @@ const DistanciasMatriz = (props) => {
 
   // Busca depts das turmas e JÁ NORMALIZA
   const retornaDepartamentosTurmas = () => {
-    TurmasDataService.getDepartamentos()
+    TurmasDataService.getDepartamentos(campus)
       .then((response) => {
         const depts = response.data || [];
         // CORREÇÃO: Normaliza os dados assim que eles chegam do backend
@@ -184,7 +188,11 @@ const DistanciasMatriz = (props) => {
   const retornaDistancias = () => {
     DistanciasDataService.getAll()
       .then((response) => {
-        setDistancias(response.data || []);
+        // Apenas as distâncias do campus selecionado (global).
+        const doCampus = (response.data || []).filter((d) =>
+          mesmoCampus(d.campus, campus),
+        );
+        setDistancias(doCampus);
       })
       .catch((err) => {
         console.error("Erro ao buscar distâncias:", err);
@@ -196,9 +204,18 @@ const DistanciasMatriz = (props) => {
   };
 
   const retornaPredios = () => {
-    SalasDataService.getPredios()
+    // Deriva os prédios a partir das salas do campus selecionado
+    // (/salas/p/ não separa por campus).
+    SalasDataService.getAll()
       .then((response) => {
-        setPredios(response.data || []);
+        const prediosCampus = [
+          ...new Set(
+            (response.data || [])
+              .filter((sala) => mesmoCampus(sala.campus, campus))
+              .map((sala) => sala.predio),
+          ),
+        ];
+        setPredios(prediosCampus);
       })
       .catch((err) => {
         if (err.response?.data?.notAuth) {
