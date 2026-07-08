@@ -20,6 +20,7 @@ import SolicitacoesWrapper from "./components/pages/solicitacoes/solicitacoes-wr
 import ComparacaoWrapper from "./components/pages/comparacao/comparacao-wrapper.component";
 import TesteSolicitacoesWrapper from "./components/pages/teste-solicitacoes/teste-solicitacoes-wrapper.component";
 import AnaliseWrapper from "./components/pages/analise/analise-wrapper.component";
+import { CampusProvider } from "./contexts/campus-context";
 
 const theme = createTheme({
   palette: {
@@ -55,6 +56,7 @@ function App() {
       <CssBaseline />
       <Box sx={{ display: "flex" }}>
         <BrowserRouter>
+          <CampusProvider>
           <Routes>
             <Route
               exact
@@ -128,6 +130,7 @@ function App() {
               element={<AnaliseWrapper nav={openNav} setNav={setOpenNav} />}
             />
           </Routes>
+          </CampusProvider>
         </BrowserRouter>
       </Box>
     </ThemeProvider>

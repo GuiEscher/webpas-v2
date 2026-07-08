@@ -24,9 +24,12 @@ import handleServerResponses from "../../../services/response-handler";
 import Mensagem from "../../re-usable/mensagem.component";
 import FileFormSalas from "../../forms/fileFormSala.component";
 import {Skeleton} from "@mui/material";
+import { useCampus } from "../../../contexts/campus-context";
+import { mesmoCampus } from "../../../utils/campus";
 
 const PrediosList = props =>{
     const {config,user,logout} = props
+    const { campus } = useCampus();
 
     const [predios,setPredios] = React.useState([]);
     const [loading,setLoading] = React.useState(true);
@@ -53,7 +56,8 @@ const PrediosList = props =>{
 
     useEffect(()=>{
         retornaPredios()
-    }, [notify])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [notify, campus])
 
     useEffect(()=>{
         
@@ -62,11 +66,13 @@ const PrediosList = props =>{
     const getNumeroSalas = () =>{
         SalasDataService.getAll()
             .then(response =>{
+                // Conta apenas salas do campus selecionado (global).
+                const salasCampus = response.data.filter(sala => mesmoCampus(sala.campus, campus))
                 let arrayTemp = []
                 predios.map(predio=>{
                     let predioTemp ={}
                     predioTemp.nome = predio
-                    predioTemp.salas = response.data.filter( sala =>{
+                    predioTemp.salas = salasCampus.filter( sala =>{
                         return sala.predio === predio
                     }).length
                     arrayTemp.push(predioTemp)
@@ -78,11 +84,18 @@ const PrediosList = props =>{
     }
 
     const retornaPredios = () =>{
-        SalasDataService.getPredios()
+        // Deriva os prédios a partir das salas do campus selecionado (o
+        // endpoint /salas/p/ não separa por campus).
+        SalasDataService.getAll()
             .then(response =>{
-                setPredios(response.data)
+                const prediosCampus = [...new Set(
+                    response.data
+                        .filter(sala => mesmoCampus(sala.campus, campus))
+                        .map(sala => sala.predio)
+                )]
+                setPredios(prediosCampus)
             }).catch(err =>{
-                let notAuthorized = err.response.data?.notAuth ? err.response.data.notAuth : false
+                let notAuthorized = err.response?.data?.notAuth ? err.response.data.notAuth : false
                 if (notAuthorized){
                     logout()
                 }

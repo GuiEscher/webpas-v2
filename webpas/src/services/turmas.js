@@ -4,8 +4,9 @@ class TurmasDataService {
     return http.get("turmas");
   }
 
-  getDepartamentos() {
-    return http.get("turmas/d/");
+  getDepartamentos(campus) {
+    const q = campus ? `?campus=${encodeURIComponent(campus)}` : "";
+    return http.get(`turmas/d/${q}`);
   }
 
   getByAnoSemestre(ano, semestre) {

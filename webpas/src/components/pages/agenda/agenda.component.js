@@ -41,6 +41,7 @@ import CalendarViewWeekIcon from "@mui/icons-material/CalendarViewWeek";
 import Popover from "@mui/material/Popover";
 import PropTypes from "prop-types";
 
+import { useCampus } from "../../../contexts/campus-context";
 import AgendaColunas from "./agenda-colunas.component";
 import AgendaLinhas from "./agenda-linhas.component";
 import AgendaCampos from "./agenda-campos.component";
@@ -109,7 +110,7 @@ const Agenda = (props) => {
       return items;
     },
   });
-  const [viewCampus, setViewCampus] = useState("São Carlos");
+  const { campus: viewCampus } = useCampus();
 
   // --- TROCA RÁPIDA: seleção de até 2 alocações ---
   const [selectedAlocacoes, setSelectedAlocacoes] = useState([]);
@@ -204,6 +205,7 @@ const Agenda = (props) => {
     docentes: false,
     creditosAula: false,
     horarioFim: false,
+    tipoQuadro: true,
   });
 
   const camposOpen = Boolean(anchorEl);
@@ -240,12 +242,6 @@ const Agenda = (props) => {
   }, [horario]);
 
   // --- HANDLERS ---
-  const handleViewCampusChange = (event, newView) => {
-    if (newView !== null) {
-      setViewCampus(newView);
-    }
-  };
-
   const retornaResultados = (ano, semestre) => {
     console.log(`Buscando resultados para ${ano}/${semestre}...`);
     ResultadosDataService.getByAnoSemestre(ano, semestre)
@@ -262,13 +258,14 @@ const Agenda = (props) => {
   const handleDeleteResults = () => {
     if (
       window.confirm(
-        `Tem certeza que deseja apagar TODOS os resultados para ${ano}/${semestre}? Isso é irreversível!`,
+        `Tem certeza que deseja apagar os resultados de ${viewCampus} para ${ano}/${semestre}? O outro campus não é afetado. Isso é irreversível!`,
       )
     ) {
-      ResultadosDataService.deleteByAnoSemestre(ano, semestre)
+      ResultadosDataService.deleteByAnoSemestre(ano, semestre, viewCampus)
         .then((res) => {
-          alert("Resultados apagados com sucesso!");
-          setResultados([]);
+          alert(`Resultados de ${viewCampus} apagados com sucesso!`);
+          retornaResultados(ano, semestre);
+          clearSelection();
         })
         .catch((err) => {
           console.error("Erro ao apagar resultados:", err);
@@ -509,27 +506,13 @@ const Agenda = (props) => {
             />
           </Grid>
 
-          <Grid item xs={6} md={2}>
+          <Grid item xs={6} md={4}>
             <Select
               label="Semestre"
               value={semestre}
               onChange={handleSemestreSelect}
               options={[1, 2]}
             />
-          </Grid>
-
-          <Grid item xs={12} md={3}>
-            <ToggleButtonGroup
-              color="primary"
-              value={viewCampus}
-              exclusive
-              onChange={handleViewCampusChange}
-              size="small"
-              fullWidth
-            >
-              <ToggleButton value="São Carlos">São Carlos</ToggleButton>
-              <ToggleButton value="Sorocaba">Sorocaba</ToggleButton>
-            </ToggleButtonGroup>
           </Grid>
 
           <Grid item xs={12} md={2} display="flex" justifyContent="flex-end">

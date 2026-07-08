@@ -5,6 +5,11 @@ class ExcelExporter {
       let resultObj = {
         Predio: alocacao.sala.predio,
         Sala: alocacao.sala.numeroSala,
+        "Tipo de Quadro":
+          alocacao.sala.tipoQuadro &&
+          alocacao.sala.tipoQuadro !== "Indiferente"
+            ? alocacao.sala.tipoQuadro
+            : "",
         Dia: alocacao.turma.diaDaSemana,
         "Horário Alocação": alocacao.horario,
       };
@@ -68,6 +73,11 @@ class ExcelExporter {
       let resultObj = {
         Predio: alocacao.sala.predio,
         Sala: alocacao.sala.numeroSala,
+        "Tipo de Quadro":
+          alocacao.sala.tipoQuadro &&
+          alocacao.sala.tipoQuadro !== "Indiferente"
+            ? alocacao.sala.tipoQuadro
+            : "",
         Dia: alocacao.turma.diaDaSemana,
         "Horário Alocação": alocacao.horario,
       };
@@ -108,6 +118,11 @@ class ExcelExporter {
       let resultObj = {
         Predio: alocacao.sala.predio,
         Sala: alocacao.sala.numeroSala,
+        "Tipo de Quadro":
+          alocacao.sala.tipoQuadro &&
+          alocacao.sala.tipoQuadro !== "Indiferente"
+            ? alocacao.sala.tipoQuadro
+            : "",
         Dia: alocacao.turma.diaDaSemana,
         "Horário Alocação": alocacao.horario,
       };
@@ -171,6 +186,11 @@ class ExcelExporter {
       let resultObj = {
         Predio: alocacao.sala.predio,
         Sala: alocacao.sala.numeroSala,
+        "Tipo de Quadro":
+          alocacao.sala.tipoQuadro &&
+          alocacao.sala.tipoQuadro !== "Indiferente"
+            ? alocacao.sala.tipoQuadro
+            : "",
         Dia: alocacao.turma.diaDaSemana,
         "Horário Alocação": alocacao.horario,
       };

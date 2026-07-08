@@ -17,6 +17,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import AjudaSolver from '../help/ajuda-solver.component';
+import { useCampus } from '../../../contexts/campus-context';
 
 const thisYear = new Date().getFullYear();
 
@@ -37,6 +38,7 @@ const configTemp = {
 const Solver = props => {
     const { config, user, logout } = props;
 
+    const { campus } = useCampus();
     const [ano, setAno] = useState(thisYear);
     const [anos, setAnos] = useState([]);
     const [semestre, setSemestre] = useState(1);
@@ -71,23 +73,41 @@ const Solver = props => {
     useEffect(() => {
         if (user) {
             retornaAnos();
-            retornaDadosParaVerificacao();
         }
     }, [user])
 
+    // A verificação de distâncias é POR CAMPUS: só considera prédios, turmas e
+    // distâncias do campus selecionado, para não exigir distâncias cruzadas
+    // entre São Carlos e Sorocaba.
+    useEffect(() => {
+        if (user) retornaDadosParaVerificacao();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user, campus, ano, semestre]);
+
+    // Trocar de campus (global) invalida o resultado exibido.
+    useEffect(() => { setExecutado(false); }, [campus]);
+
+    const mesmoCampus = (a, b) => {
+        const norm = (s) => String(s || "São Carlos").toLowerCase();
+        const canon = (s) => (norm(s).includes("sorocaba") ? "sorocaba" : "sao carlos");
+        return canon(a) === canon(b);
+    };
+
     const retornaDadosParaVerificacao = () => {
         Promise.all([
-            SalasDataService.getPredios(),
-            TurmasDataService.getDepartamentos(),
+            SalasDataService.getAll(),
+            TurmasDataService.getByAnoSemestre(ano, semestre),
             DistanciasDataService.getAll()
-        ]).then(([prediosRes, turmasRes, distanciasRes]) => {
-            const prediosData = prediosRes.data || [];
-            const deptsTurmasData = turmasRes.data || [];
-            const distanciasData = distanciasRes.data || [];
+        ]).then(([salasRes, turmasRes, distanciasRes]) => {
+            const salasData = (salasRes.data || []).filter(s => mesmoCampus(s.campus, campus));
+            const turmasData = (turmasRes.data || []).filter(t => mesmoCampus(t.campus, campus));
+            const distanciasData = (distanciasRes.data || []).filter(d => mesmoCampus(d.campus, campus));
 
-            const deptsTurmasNormalizados = arrayUnique(deptsTurmasData.map(d => normalizarDept(d)));
-            const deptsDistanciasNormalizados = arrayUnique(distanciasData.map(d => normalizarDept(d.departamento)));
-            const todosDepts = arrayUnique([...deptsTurmasNormalizados, ...deptsDistanciasNormalizados]).sort();
+            const prediosData = arrayUnique(salasData.map(s => s.predio.trim()));
+            // Departamentos efetivamente usados pelas turmas deste campus.
+            const deptosTurmas = arrayUnique(
+                turmasData.map(t => normalizarDept(t.departamentoTurma || t.departamentoOferta)).filter(Boolean)
+            );
 
             const indexDist = {};
             distanciasData.forEach(cur => {
@@ -97,10 +117,16 @@ const Solver = props => {
                 indexDist[predioNormalizado][deptNormalizado] = cur.valorDist;
             });
 
+            // Se ainda não há dados do campus, não trava (permite primeiro uso).
+            if (prediosData.length === 0 || deptosTurmas.length === 0) {
+                setTemTodos(true);
+                return;
+            }
+
             let todosPreenchidos = true;
             for (const predio of prediosData) {
-                for (const depto of todosDepts) {
-                    if (indexDist[predio.trim()]?.[depto] === undefined) {
+                for (const depto of deptosTurmas) {
+                    if (indexDist[predio]?.[depto] === undefined) {
                         todosPreenchidos = false;
                         break;
                     }
@@ -204,7 +230,8 @@ const Solver = props => {
                 predioAux: useAtx,
                 minAlunos: minAlunos,
                 tmLim: tmLim,
-                mipGap: mipGap
+                mipGap: mipGap,
+                campus: campus
             }
 
             console.log("Enviando para o solver:", data);
@@ -244,17 +271,21 @@ const Solver = props => {
                 <Typography variant="h6" gutterBottom color="primary.main" fontWeight="500">
                     1. Período Letivo
                 </Typography>
-                <Grid container spacing={3} sx={{ mb: 4 }}>
-                    <Grid item xs={12} sm={6} md={3}>
+                <Grid container spacing={3} sx={{ mb: 4 }} alignItems="center">
+                    <Grid item xs={12} sm={6} md={4}>
                         <Select label="Ano" value={ano} onChange={handleAnoSelect} options={anos} />
                     </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid item xs={12} sm={6} md={4}>
                         <Select label="Semestre" value={semestre} onChange={handleSemestreSelect} options={[1, 2]} />
                     </Grid>
-                    <Grid item xs={12} md={6} display="flex" justifyContent="flex-end" alignItems="center">
+                    <Grid item xs={12} sm={6} md={4} display="flex" justifyContent="flex-end" alignItems="center">
                         <Button startIcon={<HelpIcon />} onClick={handleOpenHelp} color="inherit">Ajuda</Button>
                     </Grid>
                 </Grid>
+                <Alert severity="info" sx={{ mb: 3 }}>
+                    A alocação processa <strong>somente o campus {campus}</strong> (selecionado na
+                    barra lateral). Turmas, salas e distâncias do outro campus não são afetadas.
+                </Alert>
 
                 <Divider sx={{ mb: 4 }} />
 

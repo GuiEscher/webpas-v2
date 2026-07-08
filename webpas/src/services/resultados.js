@@ -42,11 +42,13 @@ class ResultadosDataService {
         return http.post(`resultados/alocar-manual`, data);
     }
 
-    getAnalise(ano, semestre, minAlunos = 5) {
-        return http.get(`resultados/analise/${ano}/${semestre}?minAlunos=${minAlunos}`);
+    getAnalise(ano, semestre, minAlunos = 5, campus) {
+        const c = campus ? `&campus=${encodeURIComponent(campus)}` : "";
+        return http.get(`resultados/analise/${ano}/${semestre}?minAlunos=${minAlunos}${c}`);
     }
-    deleteByAnoSemestre = (ano, semestre) => {
-    const url = `http://localhost:5000/resultados/delete/${ano}/${semestre}`;
+    deleteByAnoSemestre = (ano, semestre, campus) => {
+    const q = campus ? `?campus=${encodeURIComponent(campus)}` : '';
+    const url = `http://localhost:5000/resultados/delete/${ano}/${semestre}${q}`;
     console.log('URL DELETE gerada:', url);
     return axios.delete(url, { withCredentials: true });  // CORREÇÃO: Envia cookies/auth
 }

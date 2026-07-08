@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ResultadosDataService from "../../../services/resultados";
 import PageHeader from "../../re-usable/page-header.component";
 import AlocarTurmaForm from "../../forms/alocarTurmaForm.component";
+import { useCampus } from "../../../contexts/campus-context";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -65,6 +66,12 @@ const StatCard = ({ label, value, color, pct, sub }) => (
 
 // Descrição legível de cada motivo
 const MOTIVO_DESCRICAO = {
+  importacaoInconsistente: {
+    label: "Importação inconsistente — revisar CSV",
+    color: "error",
+    icon: <ErrorIcon fontSize="small" />,
+    text: "Turmas cujos dados vieram desalinhados na importação (o dia ou o horário estão inválidos). A causa mais comum é vírgula dentro do nome da disciplina no CSV (ex.: \"GÊNERO, SOCIEDADE...\"), que empurra as colunas. Corrija o CSV colocando os nomes entre aspas (ou remova a vírgula) e importe novamente. Enquanto isso, estas turmas não são alocadas.",
+  },
   credZero: {
     label: "Sem créditos de aula teórica",
     color: "warning",
@@ -173,6 +180,8 @@ const Analise = ({ embedded = false, ano: anoProp, semestre: semProp, minAlunos:
   const semestre = embedded ? (semProp || 1) : semLocal;
   const minAlunos = embedded ? minAlunosProp : minAlunosLocal;
 
+  const { campus } = useCampus();
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
@@ -182,7 +191,7 @@ const Analise = ({ embedded = false, ano: anoProp, semestre: semProp, minAlunos:
     setError(null);
     if (!manterDados) setData(null);
     try {
-      const res = await ResultadosDataService.getAnalise(Number(ano), Number(semestre), Number(minAlunos));
+      const res = await ResultadosDataService.getAnalise(Number(ano), Number(semestre), Number(minAlunos), campus);
       setData(res.data);
     } catch (err) {
       setError(err.response?.data?.error || err.message);
@@ -195,6 +204,13 @@ const Analise = ({ embedded = false, ano: anoProp, semestre: semProp, minAlunos:
     rodar(true);
     if (onResultadosChanged) onResultadosChanged();
   };
+
+  // Ao trocar de campus na barra lateral: se já havia análise carregada,
+  // recarrega para o novo campus (senão ficaria mostrando dados do outro).
+  useEffect(() => {
+    if (data) rodar(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campus]);
 
   return (
     <>
@@ -288,6 +304,7 @@ const AnaliseResultado = ({ data, onAlocado }) => {
   const scoreBg = scores.geral >= 85 ? "success.50" : scores.geral >= 70 ? "warning.50" : "error.50";
 
   const motivosOrdem = [
+    "importacaoInconsistente",
     "solverFalhou",
     "horarioAtipico",
     "credZero",
@@ -428,7 +445,7 @@ const AnaliseResultado = ({ data, onAlocado }) => {
                             <TableCell sx={{ fontSize: "0.7rem", fontFamily: "monospace" }}>{t.horario_id}</TableCell>
                             <TableCell sx={{ fontSize: "0.7rem" }}>{(t.nomeDisciplina || "").substring(0, 40)}</TableCell>
                             <TableCell sx={{ fontSize: "0.7rem" }}>{t.turma}</TableCell>
-                            <TableCell><Chip label={t.solicitacao} size="small" color="error" sx={{ fontSize: "0.65rem", height: 20 }} /></TableCell>
+                            <TableCell><Chip label={e.tipo || t.solicitacao} size="small" color="error" sx={{ fontSize: "0.65rem", height: 20 }} /></TableCell>
                             <TableCell sx={{ fontSize: "0.7rem", fontWeight: 600 }}>{s.predio} {s.numeroSala}</TableCell>
                           </TableRow>
                         );
@@ -472,7 +489,7 @@ const AnaliseResultado = ({ data, onAlocado }) => {
                             <TableCell sx={{ fontSize: "0.7rem", fontFamily: "monospace" }}>{t.horario_id}</TableCell>
                             <TableCell sx={{ fontSize: "0.7rem" }}>{(t.nomeDisciplina || "").substring(0, 40)}</TableCell>
                             <TableCell sx={{ fontSize: "0.7rem" }}>{t.turma}</TableCell>
-                            <TableCell><Chip label={t.solicitacao} size="small" color="success" sx={{ fontSize: "0.65rem", height: 20 }} /></TableCell>
+                            <TableCell><Chip label={e.tipo || t.solicitacao} size="small" color="success" sx={{ fontSize: "0.65rem", height: 20 }} /></TableCell>
                             <TableCell sx={{ fontSize: "0.7rem" }}>{s.predio} {s.numeroSala}</TableCell>
                           </TableRow>
                         );
@@ -502,7 +519,7 @@ const AnaliseResultado = ({ data, onAlocado }) => {
           const turmas = categorias.naoAlocadas[motivo] || [];
           if (turmas.length === 0) return null;
           const desc = MOTIVO_DESCRICAO[motivo];
-          const isCritico = motivo === "solverFalhou";
+          const isCritico = motivo === "solverFalhou" || motivo === "importacaoInconsistente";
           return (
             <Accordion
               key={motivo}
