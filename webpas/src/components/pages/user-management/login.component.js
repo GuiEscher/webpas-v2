@@ -40,31 +40,9 @@ const Login = props =>{
         e.preventDefault()
         const data = {...values}
 
-        // Credenciais do usuário de teste
-        const testUserEmail = 'teste';
-        const testUserPassword = '123456';
-
-        // Objeto de usuário de teste com um token simulado
-        const testUserToken = {
-            _id: '123456789',
-            name: 'Usuário de Teste',
-            email: testUserEmail
-            // Adicione outras propriedades que seu token de usuário possa ter
-        };
-
-        // Verifica se as credenciais correspondem ao usuário de teste
-        if (data.email === testUserEmail && data.password === testUserPassword) {
-            // Se as credenciais estiverem corretas, simula o login
-            // e armazena o token de usuário no cookie, igual ao fluxo da API.
-            document.cookie = `user=${JSON.stringify(testUserToken)};max-age=${1000 * 60 * 24 * 30 *60}`
-            let callbackUrl = searchParams.get("callbackUrl")
-            window.location.href = callbackUrl || "/"
-            return; // Interrompe a execução
-        }
-
         UserDataService.login(data)
             .then(res=>{
-                document.cookie = `user=${JSON.stringify(res.data.userToken)};max-age=${1000 * 60 * 24 * 30 *60}`
+				document.cookie = `user=${encodeURIComponent(JSON.stringify(res.data.userToken))};max-age=${1000 * 60 * 24 * 30 *60};path=/;SameSite=Lax`
                 let callbackUrl = searchParams.get("callbackUrl")
                 window.location.href = callbackUrl || "/"
             })
@@ -82,38 +60,40 @@ const Login = props =>{
 
     return(
         <>
-            <Box component="form" onSubmit={handleSubmit}>
-                <Container>
-                <Paper>
-                    <Grid container spacing={2} alignItems="center" padding="50px">
-                        <Grid item xs={6}>
-                            <Typography variant="h5">Login</Typography>
-                        </Grid>
-                        <Grid item xs={6}></Grid>
-                        <Grid item xs={12}></Grid>
-                        <Grid item xs={6}>
+                <Box component="form" onSubmit={handleSubmit} sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 2 }}>
+                    <Container maxWidth="sm" sx={{ py: 6 }}>
+                    <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
+                        <Grid container spacing={2} alignItems="stretch">
+                            <Grid item xs={12}>
+                                <Typography variant="h5" sx={{ mb: 1 }}>Login</Typography>
+                            </Grid>
+                            <Grid item xs={12}>
                             <TextField 
                                 variant="outlined"
                                 name = "email"
                                 onChange={handleInputChange}
                                 label="Email"
-                                value ={values.email}></TextField>
+                                    value ={values.email}
+                                    fullWidth
+                                />
                         </Grid>
-                        <Grid item xs={6}>
+                            <Grid item xs={12}>
                             <TextField 
                                 variant="outlined"
                                 name = "password"
                                 onChange={handleInputChange}
                                 type="password"
                                 label="Senha"
-                                value ={values.password}></TextField>
+                                    value ={values.password}
+                                    fullWidth
+                                />
                         </Grid>
                         <Grid item xs={12}>
                             <Typography color="peru">{error}</Typography>
                         </Grid>
-                        <Grid item xs={12} sx={{marginY:2}}>
-                            <Button variant='outlined' size="large" color='primary' onClick={resetLogin} sx={{marginRight:2}}>Resetar</Button>
-                            <Button variant='contained' type="submit"size="large" color='secondary'>Enviar</Button>
+                            <Grid item xs={12} sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 1 }}>
+                                <Button variant='outlined' size="large" color='primary' onClick={resetLogin}>Resetar</Button>
+                                <Button variant='contained' type="submit" size="large" color='secondary'>Enviar</Button>
                         </Grid>
                         <Grid item xs={12}>
                             <Typography> Não tem uma conta?  

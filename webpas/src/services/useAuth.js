@@ -8,9 +8,9 @@ export default function useAuth(redirect=true) {
         if (typeof document !== 'undefined' && document.cookie) {
             const user = document.cookie
                 .split('; ')
-                .find(row => row.startsWith('user'))
-                
-            return user ? user.split('=')[1] : false
+                .find(row => row.startsWith('user='))
+
+            return user ? decodeURIComponent(user.split('=')[1]) : false
         }
         return false
     }
@@ -27,7 +27,7 @@ export default function useAuth(redirect=true) {
     }, [user])
 
     const logout = () => {
-        document.cookie = `user=;expires=Thu, 01 Jan 1970 00:00:00 GMT;`
+        document.cookie = `user=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax`
         UserDataService.logout()
             .then(()=>{
                 setUser(null)

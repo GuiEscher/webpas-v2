@@ -118,8 +118,10 @@ const sendToken = (user,statusCode,res)=>{
         email:user.email
     }
     res.cookie("authToken", token, {
-        secure: process.env.NODE_ENV !== "development",
+        secure: process.env.NODE_ENV === "production",
         httpOnly: true,
+        path: "/",
+        sameSite: "lax",
         maxAge: 1000 * 60 * 24 * 30 *60,
       });
     res.status(statusCode).json({success:true,userToken})

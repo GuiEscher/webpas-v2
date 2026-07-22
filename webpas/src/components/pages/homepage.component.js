@@ -1,11 +1,10 @@
-import React, { useEffect } from "react";
+import React from "react";
 import useAuth from '../../services/useAuth';
 import { styled, useTheme } from '@mui/material/styles';
 import Navbar from "../re-usable/navbar.component";
 import { Container, Grid, Paper, Typography, Box, Card, CardContent, CardHeader, Avatar, Divider, List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
 import PageHeader from "../re-usable/page-header.component";
 import WebhookIcon from '@mui/icons-material/Webhook';
-import UserDataService from '../../services/user';
 
 // Ícones para as seções
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -34,19 +33,6 @@ const HomePage = props => {
     const {logout, user} = useAuth();
     const {nav, setNav} = props;
     const theme = useTheme();
-
-    useEffect(() => {
-        UserDataService.getPrivate()
-            .then(res => {
-                let authorized = res.data.success;
-                if(!authorized){
-                    logout();
-                }
-            }).catch(err => {
-                console.log(err);
-                logout();
-            })
-    }, []);
 
     return(
         <>
