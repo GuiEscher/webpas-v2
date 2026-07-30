@@ -3,6 +3,7 @@ import { Grid, Typography, IconButton, Button, Box, LinearProgress } from "@mui/
 import CloseIcon from '@mui/icons-material/Close';
 import styled from "@emotion/styled";
 import DistanciasDataService from "../../services/distancias"; // Verifique se o caminho do serviço está correto
+import { useCampus } from "../../contexts/campus-context";
 
 const Input = styled('input')({
     display: 'none',
@@ -21,6 +22,7 @@ const modalStyleFile = {
 
 const FileFormDistancias = (props) => {
     const { title, closeButton, handleResponse } = props;
+    const { campus } = useCampus();
     const [loading, setLoading] = useState(false);
     const [file, setFile] = useState(null);
 
@@ -40,15 +42,17 @@ const FileFormDistancias = (props) => {
         setLoading(true);
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('campusSelecionado', campus);
 
         try {
             // Chama o novo método de upload de planilha no serviço de Distâncias
             const res = await DistanciasDataService.uploadPlanilha(formData);
             handleResponse(res);
         } catch (error) {
+            console.error("Erro no upload da planilha de distâncias:", error);
             const errorResponse = error.response 
                 ? error.response 
-                : { data: { msg: "Erro de conexão com o servidor." } };
+                : { data: { msg: `Erro de conexão com o servidor: ${error.message}` } };
             handleResponse(errorResponse);
         } finally {
             setLoading(false);
@@ -61,7 +65,10 @@ const FileFormDistancias = (props) => {
             <Grid container rowSpacing={2} spacing={1} justifyContent="space-between">
                 <Grid item xs={11}>
                     <Typography variant='h5'>{title || "Upload de Distâncias"}</Typography>
-                    <Typography variant='body2'>A planilha deve conter a aba "Dist".</Typography>
+                    <Typography variant='body2'>A planilha deve conter a aba "Distancias".</Typography>
+                    <Typography variant='body2'>
+                        As distâncias serão importadas para o campus <strong>{campus}</strong> (substituindo as existentes desse campus).
+                    </Typography>
                 </Grid>
                 <Grid item xs={1}>
                     <IconButton onClick={closeButton} disabled={loading}><CloseIcon/></IconButton>

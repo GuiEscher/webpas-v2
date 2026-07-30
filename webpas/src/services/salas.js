@@ -25,6 +25,12 @@ class SalasDataService {
         return http.post(`salas/arquivosala`,salas)
     }
 
+    uploadPlanilha(formData){
+        return http.post('salas/uploadPlanilha',formData,{
+            headers: { 'Content-Type': 'multipart/form-data' }
+        })
+    }
+
     getSalas(predio){
         return http.get('salas/' + predio)
     }

@@ -13,6 +13,12 @@ class DistanciasDataService {
         return http.post('distancias/arquivodistancia',novasDistancias)
     }
 
+    uploadPlanilha(formData){
+        return http.post('distancias/uploadPlanilha',formData,{
+            headers: { 'Content-Type': 'multipart/form-data' }
+        })
+    }
+
     updateDistancia(distanciaId,distancia){
         return http.post(`distancias/update/${distanciaId}`,distancia)
     }

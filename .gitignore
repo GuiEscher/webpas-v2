@@ -30,5 +30,6 @@ yarn-error.log*
 # arquivos de dados locais (planilhas/CSV/PDF de entrada e resultado) — não versionar
 webpas/sorocaba-files/
 webpas/resultados/
+planilhas/
 *.xlsm
 *.ods
