@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test tests/",
-    "test:unit": "node --test tests/campus.test.js tests/horario.test.js tests/periodo-slots.test.js tests/analise-helpers.test.js"
+    "test:unit": "node --test tests/campus.test.js tests/horario.test.js tests/periodo-slots.test.js tests/analise-helpers.test.js tests/planilha-distancias.test.js"
   },
   "keywords": [],
   "author": "",

@@ -7,6 +7,20 @@ const { protect } = require('../middleware/auth');
 const multer = require('multer');
 const XLSX = require('xlsx');
 const { canonizarCampus } = require('../utils/campus');
+const { parseDistanciasSheet } = require('../utils/planilha-distancias');
+
+// A aba pode vir como "Distancias", "Distâncias" ou variações de caixa.
+const acharAbaDistancias = (workbook) => {
+    const alvo = 'distancias';
+    return workbook.SheetNames.find(
+        (nome) =>
+            String(nome)
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .trim()
+                .toLowerCase() === alvo,
+    );
+};
 
 // Configuração do multer para buffer em memória
 const storage = multer.memoryStorage();
@@ -22,68 +36,49 @@ router.post('/uploadPlanilha', protect, upload.single('file'), async (req, res) 
         const userId = req.user._id;
         const campus = canonizarCampus(req.body.campus || req.body.campusSelecionado);
         const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-        const sheetName = 'Distancias';
-        const distSheet = workbook.Sheets[sheetName];
-        if (!distSheet) {
-            return res.status(400).json({ msg: `Aba "${sheetName}" não encontrada na planilha.` });
+        const sheetName = acharAbaDistancias(workbook);
+        if (!sheetName) {
+            return res.status(400).json({ msg: 'Aba "Distancias" não encontrada na planilha.' });
         }
 
-        const range = XLSX.utils.decode_range(distSheet['!ref']);
+        const { distancias, departamentos, predios } = parseDistanciasSheet(
+            XLSX,
+            workbook.Sheets[sheetName],
+        );
 
-        // Extrair headers da linha 0 (1-index), cols 1+ (B+)
-        const headers = [];
-        for (let C = 1; C <= range.e.c; ++C) {
-            const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
-            const cell = distSheet[cellAddress];
-            if (cell && cell.v) {
-                headers.push(String(cell.v).trim());
-            }
+        if (distancias.length === 0) {
+            return res.status(400).json({
+                msg: 'Nenhuma distância válida encontrada na aba "Distancias". '
+                    + 'A matriz precisa ter uma célula de cabeçalho "predio", com os departamentos à direita e os prédios abaixo.',
+            });
         }
 
-        const distanciasParaSalvar = [];
+        const distanciasParaSalvar = distancias.map((d) => ({ ...d, campus, user: userId }));
 
-        // Deletar distâncias existentes DESTE campus (não mexe no outro campus)
+        // Só apaga o que já existe depois de saber que há dados válidos para
+        // repor — antes, uma planilha ilegível zerava as distâncias do campus.
+        // O backup permite desfazer se a inserção falhar.
+        const backup = await Distancia.find({ user: userId, campus }).lean();
         await Distancia.deleteMany({ user: userId, campus });
 
-        // Extrair dados a partir da linha 1 (2-index)
-        for (let R = 1; R <= range.e.r; ++R) {
-            const atAddress = XLSX.utils.encode_cell({ r: R, c: 0 }); // Col A
-            const atCell = distSheet[atAddress];
-            if (atCell && atCell.v && String(atCell.v).trim().startsWith('AT')) {
-                const atOriginal = String(atCell.v).trim();
-                const atMatch = atOriginal.match(/(AT\d+)/);
-                const predio = atMatch ? atMatch[1] : null;
-                if (!predio) continue;
-
-                headers.forEach((depto, idx) => {
-                    const col = 1 + idx;
-                    const valAddress = XLSX.utils.encode_cell({ r: R, c: col });
-                    const valCell = distSheet[valAddress];
-                    let valorDist = 3000; // Default
-                    if (valCell && valCell.v) {
-                        valorDist = parseInt(valCell.v) || 3000;
-                    }
-                    // Salvar todas, incluindo 3000 se necessário; ajuste filtro se quiser ignorar defaults
-                    const departamento = depto.replace(/^['"]|['"]$/g, '').trim(); // Remove aspas como no DB exemplo
-                    if (departamento) {
-                        distanciasParaSalvar.push({
-                            predio,
-                            departamento,
-                            valorDist,
-                            campus,
-                            user: userId
-                        });
-                    }
-                });
+        let result;
+        try {
+            result = await Distancia.insertMany(distanciasParaSalvar);
+        } catch (erroInsercao) {
+            if (backup.length > 0) {
+                await Distancia.insertMany(backup, { ordered: false }).catch(() => {});
             }
+            throw erroInsercao;
         }
 
-        if (distanciasParaSalvar.length === 0) {
-            return res.status(400).json({ msg: 'Nenhuma distância válida encontrada na aba "Distancias".' });
-        }
-
-        const result = await Distancia.insertMany(distanciasParaSalvar);
-        res.status(201).json({ msg: `Processamento concluído. ${result.length} distâncias foram adicionadas com sucesso.` });
+        console.log(
+            `[distancias] ${sheetName}: ${predios.length} prédio(s) x ${departamentos.length} departamento(s) `
+            + `= ${result.length} distância(s) em ${campus}.`,
+        );
+        res.status(201).json({
+            msg: `Processamento concluído. ${result.length} distâncias foram adicionadas com sucesso `
+                + `(${predios.length} prédios x ${departamentos.length} departamentos).`,
+        });
     } catch (error) {
         console.error('Erro ao processar a planilha de distâncias:', error);
         res.status(500).json({ msg: 'Ocorreu um erro interno ao processar o arquivo.' });
