@@ -13,6 +13,9 @@ RUN npm install --production
 # Copia o restante do código
 COPY . .
 
+# Cria a pasta de uploads e dá permissão total de escrita
+RUN mkdir -p uploads && chmod 777 uploads
+
 # Expõe a porta que o Express utiliza
 EXPOSE 5000
 
