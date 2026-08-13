@@ -1,7 +1,7 @@
 const router = require("express").Router();
 const Turma = require("../models/turma.model");
 const { protect } = require("../middleware/auth");
-const { campusRegex } = require("../utils/campus");
+const { campusRegex, canonizarCampus } = require("../utils/campus");
 const multer = require("multer");
 const csv = require("csv-parser");
 const { Readable } = require("stream");
@@ -33,13 +33,18 @@ const normalizeText = (value = "") =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
+// Resolve a coluna "campus" do CSV para um dos dois campi canônicos.
+// Valores vazios ou não reconhecidos seguem o campus escolhido no upload —
+// gravar um valor solto (ex: um código) esconderia a turma das duas abas.
 const normalizeCampusValue = (campus, fallback = "São Carlos") => {
-  const campusLimpo = normalizeCsvValue(campus);
-  const campusNormalizado = normalizeText(campusLimpo);
+  const campusNormalizado = normalizeText(normalizeCsvValue(campus)).replace(
+    /\s+/g,
+    " ",
+  );
 
   if (campusNormalizado.includes("sorocaba")) return "Sorocaba";
-  if (campusNormalizado.includes("sao carlos")) return "São Carlos";
-  if (campusLimpo) return campusLimpo;
+  if (campusNormalizado.replace(/\s/g, "").includes("saocarlos"))
+    return "São Carlos";
 
   return fallback;
 };
@@ -54,10 +59,9 @@ router.post("/upload-csv", protect, upload.single("file"), async (req, res) => {
 
   const { ano, semestre, campusSelecionado } = req.body;
   const userId = req.user._id;
+  const campusUpload = canonizarCampus(campusSelecionado);
 
-  console.log(
-    `[INFO] Upload para: ${campusSelecionado || "São Carlos"} | ${ano}/${semestre}`,
-  );
+  console.log(`[INFO] Upload para: ${campusUpload} | ${ano}/${semestre}`);
   console.log(
     `[DEBUG] Dados recebidos - ano: ${ano}, semestre: ${semestre}, tipo ano: ${typeof ano}, tipo semestre: ${typeof semestre}`,
   );
@@ -204,7 +208,7 @@ router.post("/upload-csv", protect, upload.single("file"), async (req, res) => {
         // -----------------------------------------------
 
         // --- LÓGICA POR CAMPUS ---
-        if (campusSelecionado === "Sorocaba") {
+        if (campusUpload === "Sorocaba") {
           if (!codDiscip && !nomeDisciplina) return;
 
           // Tratamento de Campus (Null vira Sorocaba)

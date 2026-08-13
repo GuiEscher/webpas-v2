@@ -6,6 +6,7 @@ import styled from "@emotion/styled";
 import { Box } from "@mui/system";
 import useForm from "./useForm";
 import TurmasDataService from "../../services/turmas";
+import { useCampus } from "../../contexts/campus-context";
 
 const Input = styled('input')({
     display: 'none',
@@ -37,7 +38,7 @@ export default function FileFormTurma(props) {
 
     const [loading, setLoading] = useState(false);
     const [file, setFile] = useState(null);
-    const [campus, setCampus] = useState('São Carlos');
+    const { campus, setCampus } = useCampus();
 
     const {
         values,
